@@ -1,0 +1,203 @@
+@page "/"
+@using System.Text.Json
+
+<PageTitle>VeriSM Management Mesh Editor</PageTitle>
+
+<h1>VeriSM Management Mesh Editor</h1>
+<p>Create a context-driven mesh and inspect gaps/strengths before implementation.</p>
+
+<section class="panel">
+    <h2>Service Context (Define)</h2>
+    <div style="display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+        <label>Product / Service <input @bind="Document.ProductOrService" /></label>
+        <label>Value objective <input @bind="Document.ValueObjective" /></label>
+        <label>Governance constraints <input @bind="Document.GovernanceConstraints" /></label>
+        <label>Consumer needs <input @bind="Document.ConsumerNeeds" /></label>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Pillar Selections</h2>
+    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));">
+        <div>
+            <h3>Resources</h3>
+            @foreach (var resource in Resources)
+            {
+                <label><input type="checkbox" checked="@Document.Resources[resource]" @onchange="_ => ToggleResource(resource)" /> @resource</label><br />
+            }
+        </div>
+        <div>
+            <h3>Environment</h3>
+            @foreach (var factor in EnvironmentFactors)
+            {
+                <label><input type="checkbox" checked="@Document.Environment[factor]" @onchange="_ => ToggleEnvironment(factor)" /> @factor</label><br />
+            }
+        </div>
+    </div>
+</section>
+
+<section class="panel mesh-grid">
+    <h2>Practice x Emerging Technology Matrix (Produce / Provide)</h2>
+    <p><span class="badge">Green = strong</span> <span class="badge">Amber = candidate</span> <span class="badge">Red = gap</span></p>
+    <table>
+        <thead>
+            <tr>
+                <th>Management Practice</th>
+                @foreach (var technology in Technologies)
+                {
+                    <th>@technology</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var practice in Practices)
+            {
+                <tr>
+                    <td>@practice</td>
+                    @foreach (var technology in Technologies)
+                    {
+                        var cell = Document.Matrix[practice][technology];
+                        <td>
+                            <button class="cell-btn" style="background:@Color(cell.Fit);" @onclick="() => CycleCell(practice, technology)">@cell.Fit</button>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Readiness by Stage</h2>
+    <div class="score-card">
+        @foreach (var score in StageScores())
+        {
+            <div><strong>@score.Key</strong><br />@score.Value%</div>
+        }
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Share / Persist</h2>
+    <div class="toolbar">
+        <button @onclick="ExportJson">Export JSON</button>
+        <button class="secondary" @onclick="LoadSample">Load sample</button>
+        <button class="ghost" @onclick="ImportJson">Import JSON</button>
+    </div>
+    <p>Use this JSON to version mesh designs in source control and review changes in pull requests.</p>
+    <textarea @bind="Serialized"></textarea>
+</section>
+
+@code {
+    private static readonly string[] Resources = ["People", "Assets", "Budget", "Knowledge", "Suppliers", "Time", "Other"];
+    private static readonly string[] EnvironmentFactors = ["Culture", "Regulation", "Partners", "Competition", "Service stabilizers"];
+    private static readonly string[] Practices = ["Agile", "Lean", "DevOps", "ITIL", "COBIT", "SIAM", "ISO/IEC 20000"];
+    private static readonly string[] Technologies = ["Cloud", "IoT", "Automation", "AI", "Big Data", "Serverless", "Containers"];
+
+    private ManagementMeshDocument Document { get; set; } = new();
+    private string Serialized { get; set; } = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Document = SeedDocument();
+        ExportJson();
+    }
+
+    private static ManagementMeshDocument SeedDocument()
+    {
+        var doc = new ManagementMeshDocument();
+
+        foreach (var resource in Resources)
+            doc.Resources[resource] = false;
+
+        foreach (var factor in EnvironmentFactors)
+            doc.Environment[factor] = false;
+
+        foreach (var practice in Practices)
+        {
+            doc.Matrix[practice] = new();
+            foreach (var technology in Technologies)
+            {
+                doc.Matrix[practice][technology] = new MeshCell(practice, technology);
+            }
+        }
+
+        return doc;
+    }
+
+    private void ToggleResource(string key) => Document.Resources[key] = !Document.Resources[key];
+    private void ToggleEnvironment(string key) => Document.Environment[key] = !Document.Environment[key];
+
+    private void CycleCell(string practice, string technology)
+    {
+        var cell = Document.Matrix[practice][technology];
+        cell.Fit = cell.Fit switch
+        {
+            FitLevel.Gap => FitLevel.Candidate,
+            FitLevel.Candidate => FitLevel.Strong,
+            _ => FitLevel.Gap
+        };
+    }
+
+    private static string Color(FitLevel fit) => fit switch
+    {
+        FitLevel.Strong => "#16a34a",
+        FitLevel.Candidate => "#f59e0b",
+        _ => "#dc2626"
+    };
+
+    private Dictionary<string, int> StageScores()
+    {
+        var totalCells = Practices.Length * Technologies.Length;
+        var strongCells = Document.Matrix.Values.SelectMany(x => x.Values).Count(x => x.Fit == FitLevel.Strong);
+        var selectedResources = Document.Resources.Values.Count(v => v);
+        var selectedEnvironment = Document.Environment.Values.Count(v => v);
+
+        return new Dictionary<string, int>
+        {
+            ["Define"] = Percent(selectedResources + selectedEnvironment, Resources.Length + EnvironmentFactors.Length),
+            ["Produce"] = Percent(strongCells, totalCells),
+            ["Provide"] = Percent(strongCells + selectedResources, totalCells + Resources.Length),
+            ["Respond"] = Percent(selectedEnvironment + (totalCells - strongCells), totalCells + EnvironmentFactors.Length)
+        };
+    }
+
+    private static int Percent(int value, int max) => max == 0 ? 0 : (int)Math.Round((double)value / max * 100, MidpointRounding.AwayFromZero);
+
+    private void ExportJson()
+    {
+        Serialized = JsonSerializer.Serialize(Document, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private void ImportJson()
+    {
+        var imported = JsonSerializer.Deserialize<ManagementMeshDocument>(Serialized);
+        if (imported is not null)
+        {
+            Document = imported;
+        }
+    }
+
+    private void LoadSample()
+    {
+        Document = SeedDocument();
+        Document.ProductOrService = "Digital Claims Platform";
+        Document.ValueObjective = "Reduce claim cycle time by 40%";
+        Document.ConsumerNeeds = "Fast updates, transparent status";
+        Document.GovernanceConstraints = "Privacy and auditability";
+
+        foreach (var resource in new[] { "People", "Budget", "Knowledge", "Suppliers" })
+            Document.Resources[resource] = true;
+
+        foreach (var factor in new[] { "Culture", "Regulation", "Service stabilizers" })
+            Document.Environment[factor] = true;
+
+        Document.Matrix["DevOps"]["Cloud"].Fit = FitLevel.Strong;
+        Document.Matrix["DevOps"]["Automation"].Fit = FitLevel.Strong;
+        Document.Matrix["Agile"]["AI"].Fit = FitLevel.Candidate;
+        Document.Matrix["ITIL"]["Big Data"].Fit = FitLevel.Candidate;
+        Document.Matrix["COBIT"]["IoT"].Fit = FitLevel.Gap;
+
+        ExportJson();
+    }
+}
