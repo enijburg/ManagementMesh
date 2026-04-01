@@ -30,16 +30,8 @@
         <div class="right-title">Emerging Technologies</div>
         <div class="bottom-title">Management Practices</div>
 
-        <div class="left-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr); margin-top: @(SvgLabelSpace)px; height: @((int)(HorizontalCount * StepY))px;">
-            @foreach (var label in Environment) { <div class="mesh-label">@label</div> }
-        </div>
-
-        <div class="right-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr); margin-top: @(SvgLabelSpace)px; height: @((int)(HorizontalCount * StepY))px;">
-            @foreach (var label in EmergingTechnologies) { <div class="mesh-label">@label</div> }
-        </div>
-
         <div class="mesh-canvas">
-            <svg viewBox="0 0 @SvgSize @SvgTotalHeight" class="mesh-svg" @onpointermove="UpdateDrag" @onpointerup="EndDrag" @onpointerleave="EndDrag">
+            <svg viewBox="0 0 @SvgTotalWidth @SvgTotalHeight" class="mesh-svg" @onpointermove="UpdateDrag" @onpointerup="EndDrag" @onpointerleave="EndDrag">
                 <defs>
                     <linearGradient id="threadShade" x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6" />
@@ -174,7 +166,7 @@
                     var lx = (int)X(col);
                     var topY = (int)TopLabelY;
                     var topLabel = col < Resources.Length ? Resources[col] : string.Empty;
-                    @((MarkupString)$"<text class=\"mesh-column-label\" transform=\"translate({lx} {topY}) rotate(-90)\" text-anchor=\"middle\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(topLabel)}</text>")
+                    @((MarkupString)$"<text class=\"mesh-label-text\" transform=\"translate({lx} {topY}) rotate(-90)\" text-anchor=\"start\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(topLabel)}</text>")
                 }
 
                 @for (var col = 0; col < VerticalCount; col++)
@@ -182,7 +174,23 @@
                     var lx = (int)X(col);
                     var botY = (int)BottomLabelY;
                     var botLabel = col < ManagementPractices.Length ? ManagementPractices[col] : string.Empty;
-                    @((MarkupString)$"<text class=\"mesh-column-label\" transform=\"translate({lx} {botY}) rotate(-90)\" text-anchor=\"middle\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(botLabel)}</text>")
+                    @((MarkupString)$"<text class=\"mesh-label-text\" transform=\"translate({lx} {botY}) rotate(-90)\" text-anchor=\"end\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(botLabel)}</text>")
+                }
+
+                @for (var row = 0; row < HorizontalCount; row++)
+                {
+                    var ly = (int)Y(row);
+                    var lx = (int)LeftLabelX;
+                    var leftLabel = row < Environment.Length ? Environment[row] : string.Empty;
+                    @((MarkupString)$"<text class=\"mesh-label-text\" x=\"{lx}\" y=\"{ly}\" text-anchor=\"end\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(leftLabel)}</text>")
+                }
+
+                @for (var row = 0; row < HorizontalCount; row++)
+                {
+                    var ly = (int)Y(row);
+                    var rx = (int)RightLabelX;
+                    var rightLabel = row < EmergingTechnologies.Length ? EmergingTechnologies[row] : string.Empty;
+                    @((MarkupString)$"<text class=\"mesh-label-text\" x=\"{rx}\" y=\"{ly}\" text-anchor=\"start\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(rightLabel)}</text>")
                 }
             </svg>
         </div>
@@ -207,7 +215,9 @@
 
     private const int SvgSize = 640;
     private const int SvgLabelSpace = 120;
+    private const int SvgHLabelSpace = 140;
     private const int Padding = 32;
+    private const int LabelGap = 12;
     private const double ThreadThickness = 10;
     private const double WeavePatch = 18;
     private const double HitBand = 18;
@@ -215,6 +225,7 @@
     private const string DefaultColor = "#d6dae2";
 
     private static int SvgTotalHeight => SvgSize + 2 * SvgLabelSpace;
+    private static int SvgTotalWidth => SvgSize + 2 * SvgHLabelSpace;
     private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
     private static int HorizontalCount => Math.Max(Environment.Length, EmergingTechnologies.Length);
 
@@ -231,12 +242,14 @@
 
     private static double StepX => (SvgSize - Padding * 2.0) / (VerticalCount - 1);
     private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
-    private static double MeshStartX => Padding;
-    private static double MeshEndX => SvgSize - Padding;
+    private static double MeshStartX => SvgHLabelSpace + Padding;
+    private static double MeshEndX => SvgHLabelSpace + SvgSize - Padding;
     private static double MeshStartY => SvgLabelSpace + Padding;
     private static double MeshEndY => SvgLabelSpace + SvgSize - Padding;
-    private static double TopLabelY => MeshStartY / 2.0;
-    private static double BottomLabelY => (MeshEndY + SvgTotalHeight) / 2.0;
+    private static double TopLabelY => MeshStartY - LabelGap;
+    private static double BottomLabelY => MeshEndY + LabelGap;
+    private static double LeftLabelX => MeshStartX - LabelGap;
+    private static double RightLabelX => MeshEndX + LabelGap;
 
     private static double X(int col) => MeshStartX + col * StepX;
     private static double Y(int row) => MeshStartY + row * StepY;
