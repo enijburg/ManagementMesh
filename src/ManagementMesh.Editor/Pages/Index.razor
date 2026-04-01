@@ -1,14 +1,15 @@
 @page "/"
 @using System.Text.Json
+@using ManagementMesh.Editor.Models
 
 <PageTitle>VeriSM Management Mesh Editor</PageTitle>
 
 <h1>VeriSM Management Mesh Editor</h1>
-<p>Create a context-driven mesh and inspect gaps/strengths before implementation.</p>
+<p>Use the color picker, then hover and click individual mesh threads to color the woven map.</p>
 
 <section class="panel">
     <h2>Service Context (Define)</h2>
-    <div style="display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+    <div class="context-grid">
         <label>Product / Service <input @bind="Document.ProductOrService" /></label>
         <label>Value objective <input @bind="Document.ValueObjective" /></label>
         <label>Governance constraints <input @bind="Document.GovernanceConstraints" /></label>
@@ -17,63 +18,119 @@
 </section>
 
 <section class="panel">
-    <h2>Pillar Selections</h2>
-    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));">
-        <div>
-            <h3>Resources</h3>
-            @foreach (var resource in Resources)
-            {
-                <label><input type="checkbox" checked="@Document.Resources[resource]" @onchange="_ => ToggleResource(resource)" /> @resource</label><br />
-            }
-        </div>
-        <div>
-            <h3>Environment</h3>
-            @foreach (var factor in EnvironmentFactors)
-            {
-                <label><input type="checkbox" checked="@Document.Environment[factor]" @onchange="_ => ToggleEnvironment(factor)" /> @factor</label><br />
-            }
-        </div>
+    <h2>Interactive Management Mesh</h2>
+    <div class="toolbar mesh-tools">
+        <label class="color-picker">Thread color <input type="color" @bind="SelectedColor" /></label>
+        <button class="secondary" @onclick="ResetColors">Reset colors</button>
     </div>
-</section>
 
-<section class="panel mesh-grid">
-    <h2>Practice x Emerging Technology Matrix (Produce / Provide)</h2>
-    <p><span class="badge">Green = strong</span> <span class="badge">Amber = candidate</span> <span class="badge">Red = gap</span></p>
-    <table>
-        <thead>
-            <tr>
-                <th>Management Practice</th>
-                @foreach (var technology in Technologies)
-                {
-                    <th>@technology</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var practice in Practices)
+    <div class="mesh-layout">
+        <div class="top-title">Resources</div>
+        <div class="left-title">Environment</div>
+        <div class="right-title">Emerging Technologies</div>
+        <div class="bottom-title">Management Practices</div>
+
+        <div class="top-labels">
+            @foreach (var label in Resources)
             {
-                <tr>
-                    <td>@practice</td>
-                    @foreach (var technology in Technologies)
-                    {
-                        var cell = Document.Matrix[practice][technology];
-                        <td>
-                            <button class="cell-btn" style="background:@Color(cell.Fit);" @onclick="() => CycleCell(practice, technology)">@cell.Fit</button>
-                        </td>
-                    }
-                </tr>
+                <div class="mesh-label">@label</div>
             }
-        </tbody>
-    </table>
-</section>
+        </div>
 
-<section class="panel">
-    <h2>Readiness by Stage</h2>
-    <div class="score-card">
-        @foreach (var score in StageScores())
-        {
-            <div><strong>@score.Key</strong><br />@score.Value%</div>
-        }
+        <div class="left-labels">
+            @foreach (var label in Environment)
+            {
+                <div class="mesh-label">@label</div>
+            }
+        </div>
+
+        <div class="right-labels">
+            @foreach (var label in EmergingTechnologies)
+            {
+                <div class="mesh-label">@label</div>
+            }
+        </div>
+
+        <div class="bottom-labels">
+            @foreach (var label in ManagementPractices)
+            {
+                <div class="mesh-label">@label</div>
+            }
+        </div>
+
+        <div class="mesh-canvas" @onmouseleave="ClearHover">
+            <svg viewBox="0 0 @SvgSize @SvgSize" class="mesh-svg" role="img" aria-label="Woven management mesh">
+                <defs>
+                    <linearGradient id="threadShade" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.75" />
+                        <stop offset="45%" stop-color="#ffffff" stop-opacity="0.15" />
+                        <stop offset="55%" stop-color="#000000" stop-opacity="0.10" />
+                        <stop offset="100%" stop-color="#000000" stop-opacity="0.20" />
+                    </linearGradient>
+                </defs>
+
+                @for (var row = 0; row < HorizontalCount; row++)
+                {
+                    var y = Padding + row * StepY;
+                    var rowKey = RowKey(row);
+                    var rowColor = ColorForHorizontal(rowKey);
+                    var hovered = HoverAxis == ThreadAxis.Horizontal && HoverIndex == row;
+
+                    <line x1="@Padding" y1="@y" x2="@(SvgSize - Padding)" y2="@y"
+                          stroke="@rowColor" stroke-width="@ThreadThickness" stroke-linecap="round"
+                          opacity="@(hovered ? "1" : "0.92")"
+                          @onmouseover="() => SetHover(ThreadAxis.Horizontal, row)"
+                          @onclick="() => ApplyColor(ThreadAxis.Horizontal, rowKey)"/>
+
+                    <line x1="@Padding" y1="@y" x2="@(SvgSize - Padding)" y2="@y"
+                          stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="round"
+                          opacity="0.35" pointer-events="none"/>
+                }
+
+                @for (var col = 0; col < VerticalCount; col++)
+                {
+                    var x = Padding + col * StepX;
+                    var colKey = ColumnKey(col);
+                    var colColor = ColorForVertical(colKey);
+                    var hovered = HoverAxis == ThreadAxis.Vertical && HoverIndex == col;
+
+                    <line x1="@x" y1="@Padding" x2="@x" y2="@(SvgSize - Padding)"
+                          stroke="@colColor" stroke-width="@ThreadThickness" stroke-linecap="round"
+                          opacity="@(hovered ? "1" : "0.92")"
+                          @onmouseover="() => SetHover(ThreadAxis.Vertical, col)"
+                          @onclick="() => ApplyColor(ThreadAxis.Vertical, colKey)"/>
+
+                    <line x1="@x" y1="@Padding" x2="@x" y2="@(SvgSize - Padding)"
+                          stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="round"
+                          opacity="0.35" pointer-events="none"/>
+                }
+
+                @for (var row = 0; row < HorizontalCount; row++)
+                {
+                    for (var col = 0; col < VerticalCount; col++)
+                    {
+                        var x = Padding + col * StepX;
+                        var y = Padding + row * StepY;
+                        var isVerticalOver = (row + col) % 2 == 0;
+
+                        if (isVerticalOver)
+                        {
+                            <rect x="@(x - ThreadThickness / 2.0)" y="@(y - WeavePatch / 2.0)" width="@ThreadThickness" height="@WeavePatch"
+                                  rx="@(ThreadThickness / 2.6)" fill="@ColorForVertical(ColumnKey(col))" pointer-events="none" />
+                            <rect x="@(x - ThreadThickness / 2.0)" y="@(y - WeavePatch / 2.0)" width="@ThreadThickness" height="@WeavePatch"
+                                  rx="@(ThreadThickness / 2.6)" fill="url(#threadShade)" opacity="0.35" pointer-events="none" />
+                        }
+                        else
+                        {
+                            <rect x="@(x - WeavePatch / 2.0)" y="@(y - ThreadThickness / 2.0)" width="@WeavePatch" height="@ThreadThickness"
+                                  rx="@(ThreadThickness / 2.6)" fill="@ColorForHorizontal(RowKey(row))" pointer-events="none" />
+                            <rect x="@(x - WeavePatch / 2.0)" y="@(y - ThreadThickness / 2.0)" width="@WeavePatch" height="@ThreadThickness"
+                                  rx="@(ThreadThickness / 2.6)" fill="url(#threadShade)" opacity="0.35" pointer-events="none" />
+                        }
+                    }
+                }
+            </svg>
+        </div>
     </div>
 </section>
 
@@ -84,18 +141,37 @@
         <button class="secondary" @onclick="LoadSample">Load sample</button>
         <button class="ghost" @onclick="ImportJson">Import JSON</button>
     </div>
-    <p>Use this JSON to version mesh designs in source control and review changes in pull requests.</p>
     <textarea @bind="Serialized"></textarea>
 </section>
 
 @code {
-    private static readonly string[] Resources = ["People", "Assets", "Budget", "Knowledge", "Suppliers", "Time", "Other"];
-    private static readonly string[] EnvironmentFactors = ["Culture", "Regulation", "Partners", "Competition", "Service stabilizers"];
-    private static readonly string[] Practices = ["Agile", "Lean", "DevOps", "ITIL", "COBIT", "SIAM", "ISO/IEC 20000"];
-    private static readonly string[] Technologies = ["Cloud", "IoT", "Automation", "AI", "Big Data", "Serverless", "Containers"];
+    private static readonly string[] Resources =
+    ["People", "Supplier", "Budget", "Assets", "Time", "Knowledge", "Others"];
+
+    private static readonly string[] ManagementPractices =
+    ["ITIL/COBIT/CMMI-SVC", "ISO/IEC 20000/27000/38500", "DevOps/Agile/Lean", "Project & Portfolio Management", "SIAM", "Security Practices", "Others"];
+
+    private static readonly string[] Environment =
+    ["Others", "Organizational Culture", "Competition", "Legislation", "Partners", "Service Stabilizers", "Risk Controls", "Operating Model", "Governance", "Compliance"];
+
+    private static readonly string[] EmergingTechnologies =
+    ["Containers", "AI", "IoT", "BYOD", "Big Data", "Serverless Computing", "Cloud", "Automation", "Virtualization", "Others"];
+
+    private const int SvgSize = 640;
+    private const int Padding = 34;
+    private const double ThreadThickness = 12;
+    private const double WeavePatch = 20;
+
+    private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
+    private static int HorizontalCount => Math.Max(Environment.Length, EmergingTechnologies.Length);
+    private static double StepX => (SvgSize - Padding * 2.0) / (VerticalCount - 1);
+    private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
 
     private ManagementMeshDocument Document { get; set; } = new();
     private string Serialized { get; set; } = string.Empty;
+    private string SelectedColor { get; set; } = "#5b8bd9";
+    private ThreadAxis? HoverAxis { get; set; }
+    private int HoverIndex { get; set; } = -1;
 
     protected override void OnInitialized()
     {
@@ -107,62 +183,59 @@
     {
         var doc = new ManagementMeshDocument();
 
-        foreach (var resource in Resources)
-            doc.Resources[resource] = false;
-
-        foreach (var factor in EnvironmentFactors)
-            doc.Environment[factor] = false;
-
-        foreach (var practice in Practices)
+        foreach (var key in Enumerable.Range(0, VerticalCount).Select(ColumnKey))
         {
-            doc.Matrix[practice] = new();
-            foreach (var technology in Technologies)
-            {
-                doc.Matrix[practice][technology] = new MeshCell(practice, technology);
-            }
+            doc.VerticalThreadColors[key] = "#d5d7db";
+        }
+
+        foreach (var key in Enumerable.Range(0, HorizontalCount).Select(RowKey))
+        {
+            doc.HorizontalThreadColors[key] = "#d5d7db";
         }
 
         return doc;
     }
 
-    private void ToggleResource(string key) => Document.Resources[key] = !Document.Resources[key];
-    private void ToggleEnvironment(string key) => Document.Environment[key] = !Document.Environment[key];
+    private static string RowKey(int row) => $"row-{row}";
+    private static string ColumnKey(int col) => $"col-{col}";
 
-    private void CycleCell(string practice, string technology)
+    private string ColorForHorizontal(string rowKey) =>
+        Document.HorizontalThreadColors.GetValueOrDefault(rowKey, "#d5d7db");
+
+    private string ColorForVertical(string columnKey) =>
+        Document.VerticalThreadColors.GetValueOrDefault(columnKey, "#d5d7db");
+
+    private void ApplyColor(ThreadAxis axis, string key)
     {
-        var cell = Document.Matrix[practice][technology];
-        cell.Fit = cell.Fit switch
+        if (axis == ThreadAxis.Horizontal)
         {
-            FitLevel.Gap => FitLevel.Candidate,
-            FitLevel.Candidate => FitLevel.Strong,
-            _ => FitLevel.Gap
-        };
+            Document.HorizontalThreadColors[key] = SelectedColor;
+        }
+        else
+        {
+            Document.VerticalThreadColors[key] = SelectedColor;
+        }
+
+        ExportJson();
     }
 
-    private static string Color(FitLevel fit) => fit switch
+    private void SetHover(ThreadAxis axis, int index)
     {
-        FitLevel.Strong => "#16a34a",
-        FitLevel.Candidate => "#f59e0b",
-        _ => "#dc2626"
-    };
-
-    private Dictionary<string, int> StageScores()
-    {
-        var totalCells = Practices.Length * Technologies.Length;
-        var strongCells = Document.Matrix.Values.SelectMany(x => x.Values).Count(x => x.Fit == FitLevel.Strong);
-        var selectedResources = Document.Resources.Values.Count(v => v);
-        var selectedEnvironment = Document.Environment.Values.Count(v => v);
-
-        return new Dictionary<string, int>
-        {
-            ["Define"] = Percent(selectedResources + selectedEnvironment, Resources.Length + EnvironmentFactors.Length),
-            ["Produce"] = Percent(strongCells, totalCells),
-            ["Provide"] = Percent(strongCells + selectedResources, totalCells + Resources.Length),
-            ["Respond"] = Percent(selectedEnvironment + (totalCells - strongCells), totalCells + EnvironmentFactors.Length)
-        };
+        HoverAxis = axis;
+        HoverIndex = index;
     }
 
-    private static int Percent(int value, int max) => max == 0 ? 0 : (int)Math.Round((double)value / max * 100, MidpointRounding.AwayFromZero);
+    private void ClearHover()
+    {
+        HoverAxis = null;
+        HoverIndex = -1;
+    }
+
+    private void ResetColors()
+    {
+        Document = SeedDocument();
+        ExportJson();
+    }
 
     private void ExportJson()
     {
@@ -186,17 +259,12 @@
         Document.ConsumerNeeds = "Fast updates, transparent status";
         Document.GovernanceConstraints = "Privacy and auditability";
 
-        foreach (var resource in new[] { "People", "Budget", "Knowledge", "Suppliers" })
-            Document.Resources[resource] = true;
-
-        foreach (var factor in new[] { "Culture", "Regulation", "Service stabilizers" })
-            Document.Environment[factor] = true;
-
-        Document.Matrix["DevOps"]["Cloud"].Fit = FitLevel.Strong;
-        Document.Matrix["DevOps"]["Automation"].Fit = FitLevel.Strong;
-        Document.Matrix["Agile"]["AI"].Fit = FitLevel.Candidate;
-        Document.Matrix["ITIL"]["Big Data"].Fit = FitLevel.Candidate;
-        Document.Matrix["COBIT"]["IoT"].Fit = FitLevel.Gap;
+        Document.VerticalThreadColors[ColumnKey(0)] = "#3b82f6";
+        Document.VerticalThreadColors[ColumnKey(2)] = "#22c55e";
+        Document.VerticalThreadColors[ColumnKey(4)] = "#a855f7";
+        Document.HorizontalThreadColors[RowKey(1)] = "#f59e0b";
+        Document.HorizontalThreadColors[RowKey(5)] = "#ef4444";
+        Document.HorizontalThreadColors[RowKey(7)] = "#14b8a6";
 
         ExportJson();
     }
