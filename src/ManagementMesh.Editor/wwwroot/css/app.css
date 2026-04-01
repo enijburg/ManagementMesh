@@ -87,7 +87,7 @@ textarea {
 .mesh-layout {
   display: grid;
   grid-template-columns: auto 180px 1fr 190px auto;
-  grid-template-rows: auto 640px auto;
+  grid-template-rows: auto 880px auto;
   grid-template-areas:
     ". . top-title . ."
     "left-title left-labels mesh right-labels right-title"
@@ -113,10 +113,9 @@ textarea {
 
 .left-labels,
 .right-labels {
-  height: 640px;
   display: grid;
   align-items: center;
-  align-self: stretch;
+  align-self: start;
 }
 
 .left-labels { grid-area: left-labels; text-align: right; }
@@ -125,6 +124,13 @@ textarea {
 .mesh-label {
   font-size: .82rem;
   font-weight: 600;
+}
+
+.mesh-column-label {
+  font-size: 10px;
+  font-weight: 600;
+  fill: #374151;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
 .mesh-canvas {

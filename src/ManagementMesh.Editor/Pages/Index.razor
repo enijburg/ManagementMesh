@@ -30,16 +30,16 @@
         <div class="right-title">Emerging Technologies</div>
         <div class="bottom-title">Management Practices</div>
 
-        <div class="left-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr);">
+        <div class="left-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr); margin-top: @(SvgLabelSpace)px; height: @((int)(HorizontalCount * StepY))px;">
             @foreach (var label in Environment) { <div class="mesh-label">@label</div> }
         </div>
 
-        <div class="right-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr);">
+        <div class="right-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr); margin-top: @(SvgLabelSpace)px; height: @((int)(HorizontalCount * StepY))px;">
             @foreach (var label in EmergingTechnologies) { <div class="mesh-label">@label</div> }
         </div>
 
         <div class="mesh-canvas">
-            <svg viewBox="0 0 @SvgSize @SvgSize" class="mesh-svg" @onpointermove="UpdateDrag" @onpointerup="EndDrag" @onpointerleave="EndDrag">
+            <svg viewBox="0 0 @SvgSize @SvgTotalHeight" class="mesh-svg" @onpointermove="UpdateDrag" @onpointerup="EndDrag" @onpointerleave="EndDrag">
                 <defs>
                     <linearGradient id="threadShade" x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6" />
@@ -146,6 +146,22 @@
                     <line x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="18"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.End)" />
                 }
+
+                @for (var col = 0; col < VerticalCount; col++)
+                {
+                    var lx = (int)X(col);
+                    var topY = (int)TopLabelY;
+                    var topLabel = col < Resources.Length ? Resources[col] : string.Empty;
+                    @((MarkupString)$"<text class=\"mesh-column-label\" transform=\"translate({lx} {topY}) rotate(-90)\" text-anchor=\"middle\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(topLabel)}</text>")
+                }
+
+                @for (var col = 0; col < VerticalCount; col++)
+                {
+                    var lx = (int)X(col);
+                    var botY = (int)BottomLabelY;
+                    var botLabel = col < ManagementPractices.Length ? ManagementPractices[col] : string.Empty;
+                    @((MarkupString)$"<text class=\"mesh-column-label\" transform=\"translate({lx} {botY}) rotate(-90)\" text-anchor=\"middle\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(botLabel)}</text>")
+                }
             </svg>
         </div>
     </div>
@@ -168,11 +184,13 @@
     private static readonly string[] EmergingTechnologies = ["Containers", "AI", "IoT", "BYOD", "Big Data", "Serverless Computing", "Cloud", "Automation", "Virtualization", "Others"];
 
     private const int SvgSize = 640;
+    private const int SvgLabelSpace = 120;
     private const int Padding = 32;
     private const double ThreadThickness = 10;
     private const double WeavePatch = 18;
     private const double HitBand = 18;
 
+    private static int SvgTotalHeight => SvgSize + 2 * SvgLabelSpace;
     private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
     private static int HorizontalCount => Math.Max(Environment.Length, EmergingTechnologies.Length);
 
@@ -185,11 +203,13 @@
     private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
     private static double MeshStartX => Padding;
     private static double MeshEndX => SvgSize - Padding;
-    private static double MeshStartY => Padding;
-    private static double MeshEndY => SvgSize - Padding;
+    private static double MeshStartY => SvgLabelSpace + Padding;
+    private static double MeshEndY => SvgLabelSpace + SvgSize - Padding;
+    private static double TopLabelY => MeshStartY / 2.0;
+    private static double BottomLabelY => (MeshEndY + SvgTotalHeight) / 2.0;
 
-    private static double X(int col) => Padding + col * StepX;
-    private static double Y(int row) => Padding + row * StepY;
+    private static double X(int col) => MeshStartX + col * StepX;
+    private static double Y(int row) => MeshStartY + row * StepY;
 
     private ManagementMeshDocument Document { get; set; } = new();
     private string Serialized { get; set; } = string.Empty;
@@ -278,7 +298,7 @@
 
         if (DragAxis == ThreadAxis.Vertical)
         {
-            var row = Clamp((int)Math.Round((args.OffsetY - Padding) / StepY), ColorRowStart, ColorRowEnd);
+            var row = Clamp((int)Math.Round((args.OffsetY - MeshStartY) / StepY), ColorRowStart, ColorRowEnd);
             Document.VerticalThreadStops[ColumnKey(DragIndex)] = row;
         }
         else
