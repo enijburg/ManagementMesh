@@ -65,34 +65,34 @@
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var key = ColumnKey(col);
-                    var origin = Document.VerticalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
-                    var stopY = Y(Document.VerticalThreadStops[key]);
-                    if (origin == ThreadOrigin.Start)
+                    var startStop = Document.VerticalStartStops.GetValueOrDefault(key, VertStartInactive);
+                    if (startStop >= ColorRowStart)
                     {
-                        <line x1="@X(col)" y1="@MeshStartY" x2="@X(col)" y2="@stopY"
-                              stroke="@ColorForVertical(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                        <line x1="@X(col)" y1="@MeshStartY" x2="@X(col)" y2="@Y(startStop)"
+                              stroke="@Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
                     }
-                    else
+                    var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
+                    if (endStop <= ColorRowEnd)
                     {
-                        <line x1="@X(col)" y1="@stopY" x2="@X(col)" y2="@MeshEndY"
-                              stroke="@ColorForVertical(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                        <line x1="@X(col)" y1="@Y(endStop)" x2="@X(col)" y2="@MeshEndY"
+                              stroke="@Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
                     }
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var key = RowKey(row);
-                    var origin = Document.HorizontalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
-                    var stopX = X(Document.HorizontalThreadStops[key]);
-                    if (origin == ThreadOrigin.Start)
+                    var startStop = Document.HorizontalStartStops.GetValueOrDefault(key, HorizStartInactive);
+                    if (startStop >= ColorColStart)
                     {
-                        <line x1="@MeshStartX" y1="@Y(row)" x2="@stopX" y2="@Y(row)"
-                              stroke="@ColorForHorizontal(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                        <line x1="@MeshStartX" y1="@Y(row)" x2="@X(startStop)" y2="@Y(row)"
+                              stroke="@Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
                     }
-                    else
+                    var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
+                    if (endStop <= ColorColEnd)
                     {
-                        <line x1="@stopX" y1="@Y(row)" x2="@MeshEndX" y2="@Y(row)"
-                              stroke="@ColorForHorizontal(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                        <line x1="@X(endStop)" y1="@Y(row)" x2="@MeshEndX" y2="@Y(row)"
+                              stroke="@Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
                     }
                 }
 
@@ -106,13 +106,13 @@
 
                         if (isVerticalOver)
                         {
-                            var color = verticalActive ? ColorForVertical(ColumnKey(col)) : "#d6dae2";
+                            var color = verticalActive ? ColorForVerticalAt(col, row) : "#d6dae2";
                             <rect x="@(X(col) - ThreadThickness / 2)" y="@(Y(row) - WeavePatch / 2)" width="@ThreadThickness" height="@WeavePatch" rx="4"
                                   fill="@color" />
                         }
                         else
                         {
-                            var color = horizontalActive ? ColorForHorizontal(RowKey(row)) : "#d6dae2";
+                            var color = horizontalActive ? ColorForHorizontalAt(row, col) : "#d6dae2";
                             <rect x="@(X(col) - WeavePatch / 2)" y="@(Y(row) - ThreadThickness / 2)" width="@WeavePatch" height="@ThreadThickness" rx="4"
                                   fill="@color" />
                         }
@@ -189,6 +189,7 @@
     private const double ThreadThickness = 10;
     private const double WeavePatch = 18;
     private const double HitBand = 18;
+    private const string DefaultColor = "#d6dae2";
 
     private static int SvgTotalHeight => SvgSize + 2 * SvgLabelSpace;
     private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
@@ -198,6 +199,12 @@
     private static int ColorColEnd => VerticalCount - 2;
     private static int ColorRowStart => 1;
     private static int ColorRowEnd => HorizontalCount - 2;
+
+    // Sentinel values meaning "no bar active on this side"
+    private static int VertStartInactive  => ColorRowStart - 1;        // 0  (< ColorRowStart → inactive)
+    private static int VertEndInactive    => ColorRowEnd + 1;           // HorizontalCount-1 (> ColorRowEnd → inactive)
+    private static int HorizStartInactive => ColorColStart - 1;        // 0
+    private static int HorizEndInactive   => ColorColEnd + 1;          // VerticalCount-1
 
     private static double StepX => (SvgSize - Padding * 2.0) / (VerticalCount - 1);
     private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
@@ -215,6 +222,7 @@
     private string Serialized { get; set; } = string.Empty;
     private string SelectedColor { get; set; } = "#e35a5a";
     private ThreadAxis? DragAxis { get; set; }
+    private ThreadOrigin DragOrigin { get; set; }
     private int DragIndex { get; set; } = -1;
 
     protected override void OnInitialized()
@@ -230,17 +238,19 @@
         for (var col = 0; col < VerticalCount; col++)
         {
             var key = ColumnKey(col);
-            doc.VerticalThreadColors[key] = "#d6dae2";
-            doc.VerticalThreadStops[key] = ColorRowStart;
-            doc.VerticalThreadOrigins[key] = ThreadOrigin.Start;
+            doc.VerticalStartColors[key] = DefaultColor;
+            doc.VerticalStartStops[key]  = VertStartInactive;
+            doc.VerticalEndColors[key]   = DefaultColor;
+            doc.VerticalEndStops[key]    = VertEndInactive;
         }
 
         for (var row = 0; row < HorizontalCount; row++)
         {
             var key = RowKey(row);
-            doc.HorizontalThreadColors[key] = "#d6dae2";
-            doc.HorizontalThreadStops[key] = ColorColStart;
-            doc.HorizontalThreadOrigins[key] = ThreadOrigin.Start;
+            doc.HorizontalStartColors[key] = DefaultColor;
+            doc.HorizontalStartStops[key]  = HorizStartInactive;
+            doc.HorizontalEndColors[key]   = DefaultColor;
+            doc.HorizontalEndStops[key]    = HorizEndInactive;
         }
 
         return doc;
@@ -249,43 +259,81 @@
     private static string RowKey(int row) => $"row-{row}";
     private static string ColumnKey(int col) => $"col-{col}";
 
-    private string ColorForHorizontal(string key) => Document.HorizontalThreadColors.GetValueOrDefault(key, "#d6dae2");
-    private string ColorForVertical(string key) => Document.VerticalThreadColors.GetValueOrDefault(key, "#d6dae2");
+    private string ColorForVerticalAt(int col, int row)
+    {
+        var key = ColumnKey(col);
+        var startStop = Document.VerticalStartStops.GetValueOrDefault(key, VertStartInactive);
+        if (startStop >= ColorRowStart && row <= startStop)
+            return Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor);
+        var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
+        if (endStop <= ColorRowEnd && row >= endStop)
+            return Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor);
+        return DefaultColor;
+    }
+
+    private string ColorForHorizontalAt(int row, int col)
+    {
+        var key = RowKey(row);
+        var startStop = Document.HorizontalStartStops.GetValueOrDefault(key, HorizStartInactive);
+        if (startStop >= ColorColStart && col <= startStop)
+            return Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor);
+        var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
+        if (endStop <= ColorColEnd && col >= endStop)
+            return Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor);
+        return DefaultColor;
+    }
 
     private bool IsVerticalActive(int col, int row)
     {
         var key = ColumnKey(col);
-        var stop = Document.VerticalThreadStops[key];
-        var origin = Document.VerticalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
-        return origin == ThreadOrigin.Start ? row <= stop : row >= stop;
+        var startStop = Document.VerticalStartStops.GetValueOrDefault(key, VertStartInactive);
+        if (startStop >= ColorRowStart && row <= startStop) return true;
+        var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
+        return endStop <= ColorRowEnd && row >= endStop;
     }
 
     private bool IsHorizontalActive(int row, int col)
     {
         var key = RowKey(row);
-        var stop = Document.HorizontalThreadStops[key];
-        var origin = Document.HorizontalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
-        return origin == ThreadOrigin.Start ? col <= stop : col >= stop;
+        var startStop = Document.HorizontalStartStops.GetValueOrDefault(key, HorizStartInactive);
+        if (startStop >= ColorColStart && col <= startStop) return true;
+        var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
+        return endStop <= ColorColEnd && col >= endStop;
     }
 
     private void BeginDrag(ThreadAxis axis, int index, ThreadOrigin origin)
     {
-        DragAxis = axis;
-        DragIndex = index;
+        DragAxis   = axis;
+        DragIndex  = index;
+        DragOrigin = origin;
 
         if (axis == ThreadAxis.Vertical)
         {
             var key = ColumnKey(index);
-            Document.VerticalThreadColors[key] = SelectedColor;
-            Document.VerticalThreadOrigins[key] = origin;
-            Document.VerticalThreadStops[key] = origin == ThreadOrigin.Start ? ColorRowStart : ColorRowEnd;
+            if (origin == ThreadOrigin.Start)
+            {
+                Document.VerticalStartColors[key] = SelectedColor;
+                Document.VerticalStartStops[key]  = ColorRowStart;
+            }
+            else
+            {
+                Document.VerticalEndColors[key] = SelectedColor;
+                Document.VerticalEndStops[key]  = ColorRowEnd;
+            }
         }
         else
         {
             var key = RowKey(index);
-            Document.HorizontalThreadColors[key] = SelectedColor;
-            Document.HorizontalThreadOrigins[key] = origin;
-            Document.HorizontalThreadStops[key] = origin == ThreadOrigin.Start ? ColorColStart : ColorColEnd;
+            if (origin == ThreadOrigin.Start)
+            {
+                Document.HorizontalStartColors[key] = SelectedColor;
+                Document.HorizontalStartStops[key]  = ColorColStart;
+            }
+            else
+            {
+                Document.HorizontalEndColors[key] = SelectedColor;
+                Document.HorizontalEndStops[key]  = ColorColEnd;
+            }
         }
     }
 
@@ -299,12 +347,20 @@
         if (DragAxis == ThreadAxis.Vertical)
         {
             var row = Clamp((int)Math.Round((args.OffsetY - MeshStartY) / StepY), ColorRowStart, ColorRowEnd);
-            Document.VerticalThreadStops[ColumnKey(DragIndex)] = row;
+            var key = ColumnKey(DragIndex);
+            if (DragOrigin == ThreadOrigin.Start)
+                Document.VerticalStartStops[key] = row;
+            else
+                Document.VerticalEndStops[key] = row;
         }
         else
         {
-            var col = Clamp((int)Math.Round((args.OffsetX - Padding) / StepX), ColorColStart, ColorColEnd);
-            Document.HorizontalThreadStops[RowKey(DragIndex)] = col;
+            var col = Clamp((int)Math.Round((args.OffsetX - MeshStartX) / StepX), ColorColStart, ColorColEnd);
+            var key = RowKey(DragIndex);
+            if (DragOrigin == ThreadOrigin.Start)
+                Document.HorizontalStartStops[key] = col;
+            else
+                Document.HorizontalEndStops[key] = col;
         }
 
         ExportJson();
@@ -312,7 +368,7 @@
 
     private void EndDrag()
     {
-        DragAxis = null;
+        DragAxis  = null;
         DragIndex = -1;
     }
 
@@ -339,15 +395,14 @@
     {
         Document = SeedDocument();
 
-        Document.VerticalThreadColors[ColumnKey(2)] = "#e35a5a";
-        Document.VerticalThreadStops[ColumnKey(2)] = 5;
+        Document.VerticalStartColors[ColumnKey(2)] = "#e35a5a";
+        Document.VerticalStartStops[ColumnKey(2)]  = 5;
 
-        Document.VerticalThreadColors[ColumnKey(3)] = "#e35a5a";
-        Document.VerticalThreadStops[ColumnKey(3)] = 3;
+        Document.VerticalStartColors[ColumnKey(3)] = "#e35a5a";
+        Document.VerticalStartStops[ColumnKey(3)]  = 3;
 
-        Document.HorizontalThreadColors[RowKey(1)] = "#e35a5a";
-        Document.HorizontalThreadOrigins[RowKey(1)] = ThreadOrigin.End;
-        Document.HorizontalThreadStops[RowKey(1)] = 4;
+        Document.HorizontalEndColors[RowKey(1)] = "#e35a5a";
+        Document.HorizontalEndStops[RowKey(1)]  = 4;
 
         ExportJson();
     }
