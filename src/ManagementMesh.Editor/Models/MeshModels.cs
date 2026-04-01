@@ -15,4 +15,6 @@ public sealed class ManagementMeshDocument
 
     public Dictionary<string, string> VerticalThreadColors { get; set; } = new();
     public Dictionary<string, string> HorizontalThreadColors { get; set; } = new();
+    public Dictionary<string, int> VerticalThreadStops { get; set; } = new();
+    public Dictionary<string, int> HorizontalThreadStops { get; set; } = new();
 }

@@ -5,7 +5,7 @@
 <PageTitle>VeriSM Management Mesh Editor</PageTitle>
 
 <h1>VeriSM Management Mesh Editor</h1>
-<p>Use the color picker, then hover and click individual mesh threads to color the woven map.</p>
+<p>Select a color, then drag from top/left handles to set how far each thread extends into the mesh.</p>
 
 <section class="panel">
     <h2>Service Context (Define)</h2>
@@ -37,14 +37,14 @@
             }
         </div>
 
-        <div class="left-labels">
+        <div class="left-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr);">
             @foreach (var label in Environment)
             {
                 <div class="mesh-label">@label</div>
             }
         </div>
 
-        <div class="right-labels">
+        <div class="right-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr);">
             @foreach (var label in EmergingTechnologies)
             {
                 <div class="mesh-label">@label</div>
@@ -58,76 +58,86 @@
             }
         </div>
 
-        <div class="mesh-canvas" @onmouseleave="ClearHover">
-            <svg viewBox="0 0 @SvgSize @SvgSize" class="mesh-svg" role="img" aria-label="Woven management mesh">
+        <div class="mesh-canvas">
+            <svg viewBox="0 0 @SvgSize @SvgSize" class="mesh-svg"
+                 @onpointerup="EndDrag" @onpointerleave="EndDrag" @onpointermove="UpdateDrag">
                 <defs>
                     <linearGradient id="threadShade" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.75" />
-                        <stop offset="45%" stop-color="#ffffff" stop-opacity="0.15" />
-                        <stop offset="55%" stop-color="#000000" stop-opacity="0.10" />
-                        <stop offset="100%" stop-color="#000000" stop-opacity="0.20" />
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55" />
+                        <stop offset="45%" stop-color="#ffffff" stop-opacity="0.1" />
+                        <stop offset="55%" stop-color="#000000" stop-opacity="0.08" />
+                        <stop offset="100%" stop-color="#000000" stop-opacity="0.15" />
                     </linearGradient>
                 </defs>
 
-                @for (var row = 0; row < HorizontalCount; row++)
+                @for (var row = ActiveRowStart; row <= ActiveRowEnd; row++)
                 {
                     var y = Padding + row * StepY;
-                    var rowKey = RowKey(row);
-                    var rowColor = ColorForHorizontal(rowKey);
-                    var hovered = HoverAxis == ThreadAxis.Horizontal && HoverIndex == row;
-
-                    <line x1="@Padding" y1="@y" x2="@(SvgSize - Padding)" y2="@y"
-                          stroke="@rowColor" stroke-width="@ThreadThickness" stroke-linecap="round"
-                          opacity="@(hovered ? "1" : "0.92")"
-                          @onmouseover="() => SetHover(ThreadAxis.Horizontal, row)"
-                          @onclick="() => ApplyColor(ThreadAxis.Horizontal, rowKey)"/>
-
-                    <line x1="@Padding" y1="@y" x2="@(SvgSize - Padding)" y2="@y"
-                          stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="round"
-                          opacity="0.35" pointer-events="none"/>
+                    <line x1="@MeshStartX" y1="@y" x2="@MeshEndX" y2="@y" stroke="#dde1e8" stroke-width="@ThreadThickness" stroke-linecap="round" />
                 }
 
-                @for (var col = 0; col < VerticalCount; col++)
+                @for (var col = ActiveColStart; col <= ActiveColEnd; col++)
                 {
                     var x = Padding + col * StepX;
-                    var colKey = ColumnKey(col);
-                    var colColor = ColorForVertical(colKey);
-                    var hovered = HoverAxis == ThreadAxis.Vertical && HoverIndex == col;
-
-                    <line x1="@x" y1="@Padding" x2="@x" y2="@(SvgSize - Padding)"
-                          stroke="@colColor" stroke-width="@ThreadThickness" stroke-linecap="round"
-                          opacity="@(hovered ? "1" : "0.92")"
-                          @onmouseover="() => SetHover(ThreadAxis.Vertical, col)"
-                          @onclick="() => ApplyColor(ThreadAxis.Vertical, colKey)"/>
-
-                    <line x1="@x" y1="@Padding" x2="@x" y2="@(SvgSize - Padding)"
-                          stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="round"
-                          opacity="0.35" pointer-events="none"/>
+                    <line x1="@x" y1="@MeshStartY" x2="@x" y2="@MeshEndY" stroke="#dde1e8" stroke-width="@ThreadThickness" stroke-linecap="round" />
                 }
 
-                @for (var row = 0; row < HorizontalCount; row++)
+                @for (var col = ActiveColStart; col <= ActiveColEnd; col++)
                 {
-                    for (var col = 0; col < VerticalCount; col++)
+                    var x = Padding + col * StepX;
+                    var key = ColumnKey(col);
+                    var stopRow = Document.VerticalThreadStops.GetValueOrDefault(key, ActiveRowStart);
+                    var stopY = Padding + stopRow * StepY;
+                    <line x1="@x" y1="@MeshStartY" x2="@x" y2="@stopY" stroke="@ColorForVertical(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                }
+
+                @for (var row = ActiveRowStart; row <= ActiveRowEnd; row++)
+                {
+                    var y = Padding + row * StepY;
+                    var key = RowKey(row);
+                    var stopCol = Document.HorizontalThreadStops.GetValueOrDefault(key, ActiveColStart);
+                    var stopX = Padding + stopCol * StepX;
+                    <line x1="@MeshStartX" y1="@y" x2="@stopX" y2="@y" stroke="@ColorForHorizontal(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                }
+
+                @for (var row = ActiveRowStart; row <= ActiveRowEnd; row++)
+                {
+                    for (var col = ActiveColStart; col <= ActiveColEnd; col++)
                     {
                         var x = Padding + col * StepX;
                         var y = Padding + row * StepY;
+                        var verticalKey = ColumnKey(col);
+                        var horizontalKey = RowKey(row);
+                        var verticalActive = Document.VerticalThreadStops[verticalKey] >= row;
+                        var horizontalActive = Document.HorizontalThreadStops[horizontalKey] >= col;
                         var isVerticalOver = (row + col) % 2 == 0;
 
-                        if (isVerticalOver)
+                        if (verticalActive && isVerticalOver)
                         {
                             <rect x="@(x - ThreadThickness / 2.0)" y="@(y - WeavePatch / 2.0)" width="@ThreadThickness" height="@WeavePatch"
-                                  rx="@(ThreadThickness / 2.6)" fill="@ColorForVertical(ColumnKey(col))" pointer-events="none" />
-                            <rect x="@(x - ThreadThickness / 2.0)" y="@(y - WeavePatch / 2.0)" width="@ThreadThickness" height="@WeavePatch"
-                                  rx="@(ThreadThickness / 2.6)" fill="url(#threadShade)" opacity="0.35" pointer-events="none" />
+                                  rx="@(ThreadThickness / 2.5)" fill="@ColorForVertical(verticalKey)" />
                         }
-                        else
+
+                        if (horizontalActive && !isVerticalOver)
                         {
                             <rect x="@(x - WeavePatch / 2.0)" y="@(y - ThreadThickness / 2.0)" width="@WeavePatch" height="@ThreadThickness"
-                                  rx="@(ThreadThickness / 2.6)" fill="@ColorForHorizontal(RowKey(row))" pointer-events="none" />
-                            <rect x="@(x - WeavePatch / 2.0)" y="@(y - ThreadThickness / 2.0)" width="@WeavePatch" height="@ThreadThickness"
-                                  rx="@(ThreadThickness / 2.6)" fill="url(#threadShade)" opacity="0.35" pointer-events="none" />
+                                  rx="@(ThreadThickness / 2.5)" fill="@ColorForHorizontal(horizontalKey)" />
                         }
                     }
+                }
+
+                @for (var col = ActiveColStart; col <= ActiveColEnd; col++)
+                {
+                    var x = Padding + col * StepX;
+                    <circle cx="@x" cy="@(MeshStartY - HandleOffset)" r="@HandleRadius" fill="#3b82f6"
+                            @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, col)" />
+                }
+
+                @for (var row = ActiveRowStart; row <= ActiveRowEnd; row++)
+                {
+                    var y = Padding + row * StepY;
+                    <circle cx="@(MeshStartX - HandleOffset)" cy="@y" r="@HandleRadius" fill="#3b82f6"
+                            @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, row)" />
                 }
             </svg>
         </div>
@@ -159,19 +169,31 @@
 
     private const int SvgSize = 640;
     private const int Padding = 34;
-    private const double ThreadThickness = 12;
-    private const double WeavePatch = 20;
+    private const double ThreadThickness = 11;
+    private const double WeavePatch = 19;
+    private const double HandleRadius = 8;
+    private const double HandleOffset = 16;
 
     private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
     private static int HorizontalCount => Math.Max(Environment.Length, EmergingTechnologies.Length);
+    private static int ActiveColStart => 1;
+    private static int ActiveColEnd => VerticalCount - 2;
+    private static int ActiveRowStart => 1;
+    private static int ActiveRowEnd => HorizontalCount - 2;
+
     private static double StepX => (SvgSize - Padding * 2.0) / (VerticalCount - 1);
     private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
+    private static double MeshStartX => Padding + ActiveColStart * StepX;
+    private static double MeshEndX => Padding + ActiveColEnd * StepX;
+    private static double MeshStartY => Padding + ActiveRowStart * StepY;
+    private static double MeshEndY => Padding + ActiveRowEnd * StepY;
 
     private ManagementMeshDocument Document { get; set; } = new();
     private string Serialized { get; set; } = string.Empty;
-    private string SelectedColor { get; set; } = "#5b8bd9";
-    private ThreadAxis? HoverAxis { get; set; }
-    private int HoverIndex { get; set; } = -1;
+    private string SelectedColor { get; set; } = "#e35a5a";
+
+    private ThreadAxis? DragAxis { get; set; }
+    private int DragIndex { get; set; } = -1;
 
     protected override void OnInitialized()
     {
@@ -183,14 +205,18 @@
     {
         var doc = new ManagementMeshDocument();
 
-        foreach (var key in Enumerable.Range(0, VerticalCount).Select(ColumnKey))
+        foreach (var col in Enumerable.Range(0, VerticalCount))
         {
-            doc.VerticalThreadColors[key] = "#d5d7db";
+            var key = ColumnKey(col);
+            doc.VerticalThreadColors[key] = "#d9dce2";
+            doc.VerticalThreadStops[key] = ActiveRowStart;
         }
 
-        foreach (var key in Enumerable.Range(0, HorizontalCount).Select(RowKey))
+        foreach (var row in Enumerable.Range(0, HorizontalCount))
         {
-            doc.HorizontalThreadColors[key] = "#d5d7db";
+            var key = RowKey(row);
+            doc.HorizontalThreadColors[key] = "#d9dce2";
+            doc.HorizontalThreadStops[key] = ActiveColStart;
         }
 
         return doc;
@@ -199,37 +225,52 @@
     private static string RowKey(int row) => $"row-{row}";
     private static string ColumnKey(int col) => $"col-{col}";
 
-    private string ColorForHorizontal(string rowKey) =>
-        Document.HorizontalThreadColors.GetValueOrDefault(rowKey, "#d5d7db");
+    private string ColorForHorizontal(string rowKey) => Document.HorizontalThreadColors.GetValueOrDefault(rowKey, "#d9dce2");
+    private string ColorForVertical(string columnKey) => Document.VerticalThreadColors.GetValueOrDefault(columnKey, "#d9dce2");
 
-    private string ColorForVertical(string columnKey) =>
-        Document.VerticalThreadColors.GetValueOrDefault(columnKey, "#d5d7db");
-
-    private void ApplyColor(ThreadAxis axis, string key)
+    private void BeginDrag(ThreadAxis axis, int index)
     {
-        if (axis == ThreadAxis.Horizontal)
+        DragAxis = axis;
+        DragIndex = index;
+
+        if (axis == ThreadAxis.Vertical)
         {
-            Document.HorizontalThreadColors[key] = SelectedColor;
+            Document.VerticalThreadColors[ColumnKey(index)] = SelectedColor;
         }
         else
         {
-            Document.VerticalThreadColors[key] = SelectedColor;
+            Document.HorizontalThreadColors[RowKey(index)] = SelectedColor;
+        }
+    }
+
+    private void UpdateDrag(Microsoft.AspNetCore.Components.Web.PointerEventArgs args)
+    {
+        if (DragAxis is null || DragIndex < 0)
+        {
+            return;
+        }
+
+        if (DragAxis == ThreadAxis.Vertical)
+        {
+            var row = Clamp((int)Math.Round((args.OffsetY - Padding) / StepY), ActiveRowStart, ActiveRowEnd);
+            Document.VerticalThreadStops[ColumnKey(DragIndex)] = row;
+        }
+        else
+        {
+            var col = Clamp((int)Math.Round((args.OffsetX - Padding) / StepX), ActiveColStart, ActiveColEnd);
+            Document.HorizontalThreadStops[RowKey(DragIndex)] = col;
         }
 
         ExportJson();
     }
 
-    private void SetHover(ThreadAxis axis, int index)
+    private void EndDrag()
     {
-        HoverAxis = axis;
-        HoverIndex = index;
+        DragAxis = null;
+        DragIndex = -1;
     }
 
-    private void ClearHover()
-    {
-        HoverAxis = null;
-        HoverIndex = -1;
-    }
+    private static int Clamp(int value, int min, int max) => value < min ? min : value > max ? max : value;
 
     private void ResetColors()
     {
@@ -259,12 +300,14 @@
         Document.ConsumerNeeds = "Fast updates, transparent status";
         Document.GovernanceConstraints = "Privacy and auditability";
 
-        Document.VerticalThreadColors[ColumnKey(0)] = "#3b82f6";
-        Document.VerticalThreadColors[ColumnKey(2)] = "#22c55e";
-        Document.VerticalThreadColors[ColumnKey(4)] = "#a855f7";
-        Document.HorizontalThreadColors[RowKey(1)] = "#f59e0b";
-        Document.HorizontalThreadColors[RowKey(5)] = "#ef4444";
-        Document.HorizontalThreadColors[RowKey(7)] = "#14b8a6";
+        foreach (var col in new[] { 2, 3, 4, 5 })
+        {
+            Document.VerticalThreadColors[ColumnKey(col)] = "#e35a5a";
+            Document.VerticalThreadStops[ColumnKey(col)] = ActiveRowEnd;
+        }
+
+        Document.HorizontalThreadColors[RowKey(3)] = "#e35a5a";
+        Document.HorizontalThreadStops[RowKey(3)] = ActiveColEnd;
 
         ExportJson();
     }

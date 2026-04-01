@@ -86,8 +86,8 @@ textarea {
 
 .mesh-layout {
   display: grid;
-  grid-template-columns: 160px 1fr 180px;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-columns: 180px 1fr 190px;
+  grid-template-rows: auto auto 640px auto auto auto;
   grid-template-areas:
     ". top-title ."
     ". top-labels ."
@@ -116,19 +116,20 @@ textarea {
 
 .top-labels,
 .bottom-labels {
-  grid-area: top-labels;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: .25rem;
   text-align: center;
 }
 
+.top-labels { grid-area: top-labels; }
 .bottom-labels { grid-area: bottom-labels; }
 
 .left-labels,
 .right-labels {
+  height: 640px;
   display: grid;
-  gap: .1rem;
+  align-items: center;
 }
 
 .left-labels { grid-area: left-labels; text-align: right; }
@@ -141,14 +142,17 @@ textarea {
 
 .mesh-canvas {
   grid-area: mesh;
-  background: #d9d9d9;
+  background: #ffffff;
   border-radius: 4px;
   padding: .35rem;
+  border: 1px solid #e7eaf0;
 }
 
 .mesh-svg {
   width: 100%;
   max-width: 720px;
+  height: 100%;
   display: block;
   margin: 0 auto;
+  touch-action: none;
 }
