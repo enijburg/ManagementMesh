@@ -69,13 +69,13 @@
                     if (startStop >= ColorRowStart)
                     {
                         <line x1="@X(col)" y1="@MeshStartY" x2="@X(col)" y2="@Y(startStop)"
-                              stroke="@Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                              stroke="@Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
                     }
                     var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
                     if (endStop <= ColorRowEnd)
                     {
                         <line x1="@X(col)" y1="@Y(endStop)" x2="@X(col)" y2="@MeshEndY"
-                              stroke="@Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                              stroke="@Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
                     }
                 }
 
@@ -86,13 +86,13 @@
                     if (startStop >= ColorColStart)
                     {
                         <line x1="@MeshStartX" y1="@Y(row)" x2="@X(startStop)" y2="@Y(row)"
-                              stroke="@Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                              stroke="@Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
                     }
                     var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
                     if (endStop <= ColorColEnd)
                     {
                         <line x1="@X(endStop)" y1="@Y(row)" x2="@MeshEndX" y2="@Y(row)"
-                              stroke="@Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                              stroke="@Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
                     }
                 }
 
@@ -104,17 +104,39 @@
                         var verticalActive = col >= ColorColStart && col <= ColorColEnd && IsVerticalActive(col, row);
                         var horizontalActive = row >= ColorRowStart && row <= ColorRowEnd && IsHorizontalActive(row, col);
 
-                        if (isVerticalOver)
+                        if (verticalActive && horizontalActive)
+                        {
+                            @* Both active – render under thread first, then over thread, both translucent *@
+                            if (isVerticalOver)
+                            {
+                                var hColor = ColorForHorizontalAt(row, col);
+                                <rect x="@(X(col) - WeavePatch / 2)" y="@(Y(row) - ThreadThickness / 2)" width="@WeavePatch" height="@ThreadThickness" rx="4"
+                                      fill="@hColor" fill-opacity="@ThreadOpacity" />
+                                var vColor = ColorForVerticalAt(col, row);
+                                <rect x="@(X(col) - ThreadThickness / 2)" y="@(Y(row) - WeavePatch / 2)" width="@ThreadThickness" height="@WeavePatch" rx="4"
+                                      fill="@vColor" fill-opacity="@ThreadOpacity" />
+                            }
+                            else
+                            {
+                                var vColor = ColorForVerticalAt(col, row);
+                                <rect x="@(X(col) - ThreadThickness / 2)" y="@(Y(row) - WeavePatch / 2)" width="@ThreadThickness" height="@WeavePatch" rx="4"
+                                      fill="@vColor" fill-opacity="@ThreadOpacity" />
+                                var hColor = ColorForHorizontalAt(row, col);
+                                <rect x="@(X(col) - WeavePatch / 2)" y="@(Y(row) - ThreadThickness / 2)" width="@WeavePatch" height="@ThreadThickness" rx="4"
+                                      fill="@hColor" fill-opacity="@ThreadOpacity" />
+                            }
+                        }
+                        else if (isVerticalOver)
                         {
                             var color = verticalActive ? ColorForVerticalAt(col, row) : "#d6dae2";
                             <rect x="@(X(col) - ThreadThickness / 2)" y="@(Y(row) - WeavePatch / 2)" width="@ThreadThickness" height="@WeavePatch" rx="4"
-                                  fill="@color" />
+                                  fill="@color" fill-opacity="@(verticalActive ? ThreadOpacity : 1)" />
                         }
                         else
                         {
                             var color = horizontalActive ? ColorForHorizontalAt(row, col) : "#d6dae2";
                             <rect x="@(X(col) - WeavePatch / 2)" y="@(Y(row) - ThreadThickness / 2)" width="@WeavePatch" height="@ThreadThickness" rx="4"
-                                  fill="@color" />
+                                  fill="@color" fill-opacity="@(horizontalActive ? ThreadOpacity : 1)" />
                         }
                     }
                 }
@@ -189,6 +211,7 @@
     private const double ThreadThickness = 10;
     private const double WeavePatch = 18;
     private const double HitBand = 18;
+    private const double ThreadOpacity = 0.75;
     private const string DefaultColor = "#d6dae2";
 
     private static int SvgTotalHeight => SvgSize + 2 * SvgLabelSpace;
