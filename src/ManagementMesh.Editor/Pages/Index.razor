@@ -5,7 +5,7 @@
 <PageTitle>VeriSM Management Mesh Editor</PageTitle>
 
 <h1>VeriSM Management Mesh Editor</h1>
-<p>Select a color, then drag from the top or left edge to set how far a thread extends.</p>
+<p>Select a color, then drag from any edge to set how far a thread extends.</p>
 
 <section class="panel">
     <h2>Service Context (Define)</h2>
@@ -30,20 +30,12 @@
         <div class="right-title">Emerging Technologies</div>
         <div class="bottom-title">Management Practices</div>
 
-        <div class="top-labels">
-            @foreach (var label in Resources) { <div class="mesh-label">@label</div> }
-        </div>
-
         <div class="left-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr);">
             @foreach (var label in Environment) { <div class="mesh-label">@label</div> }
         </div>
 
         <div class="right-labels" style="grid-template-rows: repeat(@HorizontalCount, 1fr);">
             @foreach (var label in EmergingTechnologies) { <div class="mesh-label">@label</div> }
-        </div>
-
-        <div class="bottom-labels">
-            @foreach (var label in ManagementPractices) { <div class="mesh-label">@label</div> }
         </div>
 
         <div class="mesh-canvas">
@@ -73,15 +65,35 @@
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var key = ColumnKey(col);
-                    <line x1="@X(col)" y1="@MeshStartY" x2="@X(col)" y2="@Y(Document.VerticalThreadStops[key])"
-                          stroke="@ColorForVertical(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                    var origin = Document.VerticalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
+                    var stopY = Y(Document.VerticalThreadStops[key]);
+                    if (origin == ThreadOrigin.Start)
+                    {
+                        <line x1="@X(col)" y1="@MeshStartY" x2="@X(col)" y2="@stopY"
+                              stroke="@ColorForVertical(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                    }
+                    else
+                    {
+                        <line x1="@X(col)" y1="@stopY" x2="@X(col)" y2="@MeshEndY"
+                              stroke="@ColorForVertical(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                    }
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var key = RowKey(row);
-                    <line x1="@MeshStartX" y1="@Y(row)" x2="@X(Document.HorizontalThreadStops[key])" y2="@Y(row)"
-                          stroke="@ColorForHorizontal(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                    var origin = Document.HorizontalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
+                    var stopX = X(Document.HorizontalThreadStops[key]);
+                    if (origin == ThreadOrigin.Start)
+                    {
+                        <line x1="@MeshStartX" y1="@Y(row)" x2="@stopX" y2="@Y(row)"
+                              stroke="@ColorForHorizontal(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                    }
+                    else
+                    {
+                        <line x1="@stopX" y1="@Y(row)" x2="@MeshEndX" y2="@Y(row)"
+                              stroke="@ColorForHorizontal(key)" stroke-width="@ThreadThickness" stroke-linecap="round" />
+                    }
                 }
 
                 @for (var row = 0; row < HorizontalCount; row++)
@@ -89,32 +101,50 @@
                     for (var col = 0; col < VerticalCount; col++)
                     {
                         var isVerticalOver = (row + col) % 2 == 0;
-                        var verticalActive = col >= ColorColStart && col <= ColorColEnd && Document.VerticalThreadStops[ColumnKey(col)] >= row;
-                        var horizontalActive = row >= ColorRowStart && row <= ColorRowEnd && Document.HorizontalThreadStops[RowKey(row)] >= col;
+                        var verticalActive = col >= ColorColStart && col <= ColorColEnd && IsVerticalActive(col, row);
+                        var horizontalActive = row >= ColorRowStart && row <= ColorRowEnd && IsHorizontalActive(row, col);
 
-                        if (isVerticalOver && verticalActive)
+                        if (isVerticalOver)
                         {
+                            var color = verticalActive ? ColorForVertical(ColumnKey(col)) : "#d6dae2";
                             <rect x="@(X(col) - ThreadThickness / 2)" y="@(Y(row) - WeavePatch / 2)" width="@ThreadThickness" height="@WeavePatch" rx="4"
-                                  fill="@ColorForVertical(ColumnKey(col))" />
+                                  fill="@color" />
                         }
-                        else if (!isVerticalOver && horizontalActive)
+                        else
                         {
+                            var color = horizontalActive ? ColorForHorizontal(RowKey(row)) : "#d6dae2";
                             <rect x="@(X(col) - WeavePatch / 2)" y="@(Y(row) - ThreadThickness / 2)" width="@WeavePatch" height="@ThreadThickness" rx="4"
-                                  fill="@ColorForHorizontal(RowKey(row))" />
+                                  fill="@color" />
                         }
                     }
                 }
 
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
-                    <line x1="@X(col)" y1="@(MeshStartY - HitBand)" x2="@X(col)" y2="@MeshStartY" stroke="transparent" stroke-width="18"
-                          @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, col)" />
+                    var c = col;
+                    <line x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="18"
+                          @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.Start)" />
+                }
+
+                @for (var col = ColorColStart; col <= ColorColEnd; col++)
+                {
+                    var c = col;
+                    <line x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="18"
+                          @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.End)" />
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
-                    <line x1="@(MeshStartX - HitBand)" y1="@Y(row)" x2="@MeshStartX" y2="@Y(row)" stroke="transparent" stroke-width="18"
-                          @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, row)" />
+                    var r = row;
+                    <line x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="18"
+                          @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.Start)" />
+                }
+
+                @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
+                {
+                    var r = row;
+                    <line x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="18"
+                          @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.End)" />
                 }
             </svg>
         </div>
@@ -182,6 +212,7 @@
             var key = ColumnKey(col);
             doc.VerticalThreadColors[key] = "#d6dae2";
             doc.VerticalThreadStops[key] = ColorRowStart;
+            doc.VerticalThreadOrigins[key] = ThreadOrigin.Start;
         }
 
         for (var row = 0; row < HorizontalCount; row++)
@@ -189,6 +220,7 @@
             var key = RowKey(row);
             doc.HorizontalThreadColors[key] = "#d6dae2";
             doc.HorizontalThreadStops[key] = ColorColStart;
+            doc.HorizontalThreadOrigins[key] = ThreadOrigin.Start;
         }
 
         return doc;
@@ -200,18 +232,40 @@
     private string ColorForHorizontal(string key) => Document.HorizontalThreadColors.GetValueOrDefault(key, "#d6dae2");
     private string ColorForVertical(string key) => Document.VerticalThreadColors.GetValueOrDefault(key, "#d6dae2");
 
-    private void BeginDrag(ThreadAxis axis, int index)
+    private bool IsVerticalActive(int col, int row)
+    {
+        var key = ColumnKey(col);
+        var stop = Document.VerticalThreadStops[key];
+        var origin = Document.VerticalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
+        return origin == ThreadOrigin.Start ? row <= stop : row >= stop;
+    }
+
+    private bool IsHorizontalActive(int row, int col)
+    {
+        var key = RowKey(row);
+        var stop = Document.HorizontalThreadStops[key];
+        var origin = Document.HorizontalThreadOrigins.GetValueOrDefault(key, ThreadOrigin.Start);
+        return origin == ThreadOrigin.Start ? col <= stop : col >= stop;
+    }
+
+    private void BeginDrag(ThreadAxis axis, int index, ThreadOrigin origin)
     {
         DragAxis = axis;
         DragIndex = index;
 
         if (axis == ThreadAxis.Vertical)
         {
-            Document.VerticalThreadColors[ColumnKey(index)] = SelectedColor;
+            var key = ColumnKey(index);
+            Document.VerticalThreadColors[key] = SelectedColor;
+            Document.VerticalThreadOrigins[key] = origin;
+            Document.VerticalThreadStops[key] = origin == ThreadOrigin.Start ? ColorRowStart : ColorRowEnd;
         }
         else
         {
-            Document.HorizontalThreadColors[RowKey(index)] = SelectedColor;
+            var key = RowKey(index);
+            Document.HorizontalThreadColors[key] = SelectedColor;
+            Document.HorizontalThreadOrigins[key] = origin;
+            Document.HorizontalThreadStops[key] = origin == ThreadOrigin.Start ? ColorColStart : ColorColEnd;
         }
     }
 
@@ -265,14 +319,15 @@
     {
         Document = SeedDocument();
 
-        foreach (var col in new[] { 2, 3, 4, 5 })
-        {
-            Document.VerticalThreadColors[ColumnKey(col)] = "#e35a5a";
-            Document.VerticalThreadStops[ColumnKey(col)] = ColorRowEnd;
-        }
+        Document.VerticalThreadColors[ColumnKey(2)] = "#e35a5a";
+        Document.VerticalThreadStops[ColumnKey(2)] = 5;
 
-        Document.HorizontalThreadColors[RowKey(3)] = "#e35a5a";
-        Document.HorizontalThreadStops[RowKey(3)] = ColorColEnd;
+        Document.VerticalThreadColors[ColumnKey(3)] = "#e35a5a";
+        Document.VerticalThreadStops[ColumnKey(3)] = 3;
+
+        Document.HorizontalThreadColors[RowKey(1)] = "#e35a5a";
+        Document.HorizontalThreadOrigins[RowKey(1)] = ThreadOrigin.End;
+        Document.HorizontalThreadStops[RowKey(1)] = 4;
 
         ExportJson();
     }
