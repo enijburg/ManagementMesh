@@ -21,6 +21,13 @@
     <h2>Interactive Management Mesh</h2>
     <div class="toolbar mesh-tools">
         <label class="color-picker">Thread color <input type="color" @bind="SelectedColor" /></label>
+        <div class="color-swatches">
+            @foreach (var c in PresetColors)
+            {
+                var color = c;
+                <button class="swatch" style="background:@color" @onclick="() => SelectedColor = color" title="@color"></button>
+            }
+        </div>
         <button class="secondary" @onclick="ResetColors">Reset</button>
     </div>
 
@@ -136,28 +143,28 @@
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var c = col;
-                    <line x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="18"
+                    <line x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.Start)" />
                 }
 
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var c = col;
-                    <line x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="18"
+                    <line x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.End)" />
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var r = row;
-                    <line x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="18"
+                    <line x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.Start)" />
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var r = row;
-                    <line x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="18"
+                    <line x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.End)" />
                 }
 
@@ -213,14 +220,16 @@
     private static readonly string[] Environment = ["Others", "Organizational Culture", "Competition", "Legislation", "Partners", "Service Stabilizers", "Risk Controls", "Operating Model", "Governance", "Compliance"];
     private static readonly string[] EmergingTechnologies = ["Containers", "AI", "IoT", "BYOD", "Big Data", "Serverless Computing", "Cloud", "Automation", "Virtualization", "Others"];
 
+    private static readonly string[] PresetColors = ["#e35a5a", "#4ade80", "#3b82f6", "#f59e0b", "#a855f7", "#14b8a6", "#ec4899", "#ef4444"];
+
     private const int SvgSize = 640;
-    private const int SvgLabelSpace = 120;
-    private const int SvgHLabelSpace = 140;
+    private const int SvgLabelSpace = 80;
+    private const int SvgHLabelSpace = 100;
     private const int Padding = 32;
     private const int LabelGap = 12;
     private const double ThreadThickness = 10;
     private const double WeavePatch = 18;
-    private const double HitBand = 18;
+    private const double HitBand = 36;
     private const double ThreadOpacity = 0.75;
     private const string DefaultColor = "#d6dae2";
 
@@ -229,16 +238,16 @@
     private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
     private static int HorizontalCount => Math.Max(Environment.Length, EmergingTechnologies.Length);
 
-    private static int ColorColStart => 1;
-    private static int ColorColEnd => VerticalCount - 2;
-    private static int ColorRowStart => 1;
-    private static int ColorRowEnd => HorizontalCount - 2;
+    private static int ColorColStart => 0;
+    private static int ColorColEnd => VerticalCount - 1;
+    private static int ColorRowStart => 0;
+    private static int ColorRowEnd => HorizontalCount - 1;
 
     // Sentinel values meaning "no bar active on this side"
-    private static int VertStartInactive  => ColorRowStart - 1;        // 0  (< ColorRowStart → inactive)
-    private static int VertEndInactive    => ColorRowEnd + 1;           // HorizontalCount-1 (> ColorRowEnd → inactive)
-    private static int HorizStartInactive => ColorColStart - 1;        // 0
-    private static int HorizEndInactive   => ColorColEnd + 1;          // VerticalCount-1
+    private static int VertStartInactive  => ColorRowStart - 1;        // -1  (< ColorRowStart → inactive)
+    private static int VertEndInactive    => ColorRowEnd + 1;           // HorizontalCount (> ColorRowEnd → inactive)
+    private static int HorizStartInactive => ColorColStart - 1;        // -1
+    private static int HorizEndInactive   => ColorColEnd + 1;          // VerticalCount
 
     private static double StepX => (SvgSize - Padding * 2.0) / (VerticalCount - 1);
     private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
