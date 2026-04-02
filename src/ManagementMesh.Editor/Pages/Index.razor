@@ -244,10 +244,10 @@
     private static int ColorRowEnd => HorizontalCount - 1;
 
     // Sentinel values meaning "no bar active on this side"
-    private static int VertStartInactive  => ColorRowStart - 1;        // -1  (< ColorRowStart → inactive)
-    private static int VertEndInactive    => ColorRowEnd + 1;           // HorizontalCount (> ColorRowEnd → inactive)
-    private static int HorizStartInactive => ColorColStart - 1;        // -1
-    private static int HorizEndInactive   => ColorColEnd + 1;          // VerticalCount
+    private static double VertStartInactive  => ColorRowStart - 1.0;      // -1  (< ColorRowStart → inactive)
+    private static double VertEndInactive    => ColorRowEnd + 1.0;         // HorizontalCount (> ColorRowEnd → inactive)
+    private static double HorizStartInactive => ColorColStart - 1.0;      // -1
+    private static double HorizEndInactive   => ColorColEnd + 1.0;        // VerticalCount
 
     private static double StepX => (SvgSize - Padding * 2.0) / (VerticalCount - 1);
     private static double StepY => (SvgSize - Padding * 2.0) / (HorizontalCount - 1);
@@ -260,8 +260,8 @@
     private static double LeftLabelX => MeshStartX - LabelGap;
     private static double RightLabelX => MeshEndX + LabelGap;
 
-    private static double X(int col) => MeshStartX + col * StepX;
-    private static double Y(int row) => MeshStartY + row * StepY;
+    private static double X(double col) => MeshStartX + col * StepX;
+    private static double Y(double row) => MeshStartY + row * StepY;
 
     private ManagementMeshDocument Document { get; set; } = new();
     private string Serialized { get; set; } = string.Empty;
@@ -391,7 +391,7 @@
 
         if (DragAxis == ThreadAxis.Vertical)
         {
-            var row = Clamp((int)Math.Round((args.OffsetY - MeshStartY) / StepY), ColorRowStart, ColorRowEnd);
+            var row = Clamp(Math.Round((args.OffsetY - MeshStartY) / StepY / 0.25) * 0.25, ColorRowStart, ColorRowEnd);
             var key = ColumnKey(DragIndex);
             if (DragOrigin == ThreadOrigin.Start)
                 Document.VerticalStartStops[key] = row;
@@ -400,7 +400,7 @@
         }
         else
         {
-            var col = Clamp((int)Math.Round((args.OffsetX - MeshStartX) / StepX), ColorColStart, ColorColEnd);
+            var col = Clamp(Math.Round((args.OffsetX - MeshStartX) / StepX / 0.25) * 0.25, ColorColStart, ColorColEnd);
             var key = RowKey(DragIndex);
             if (DragOrigin == ThreadOrigin.Start)
                 Document.HorizontalStartStops[key] = col;
@@ -417,7 +417,7 @@
         DragIndex = -1;
     }
 
-    private static int Clamp(int value, int min, int max) => value < min ? min : value > max ? max : value;
+    private static double Clamp(double value, double min, double max) => value < min ? min : value > max ? max : value;
 
     private void ResetColors()
     {
