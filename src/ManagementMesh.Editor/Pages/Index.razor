@@ -143,28 +143,28 @@
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var c = col;
-                    <line x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="36"
+                    <line class="drag-handle" x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.Start)" />
                 }
 
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var c = col;
-                    <line x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="36"
+                    <line class="drag-handle" x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.End)" />
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var r = row;
-                    <line x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="36"
+                    <line class="drag-handle" x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.Start)" />
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var r = row;
-                    <line x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="36"
+                    <line class="drag-handle" x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="36"
                           @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.End)" />
                 }
 

@@ -160,3 +160,7 @@ textarea {
   transform: scale(1.2);
   border-color: #64748b;
 }
+
+.drag-handle {
+  cursor: grab;
+}
