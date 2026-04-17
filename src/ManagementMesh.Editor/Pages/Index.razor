@@ -50,15 +50,15 @@
                 @for (var row = 0; row < HorizontalCount; row++)
                 {
                     var y = Y(row);
-                    <line x1="@MeshStartX" y1="@y" x2="@MeshEndX" y2="@y" stroke="#d6dae2" stroke-width="@ThreadThickness" stroke-linecap="round" />
-                    <line x1="@MeshStartX" y1="@y" x2="@MeshEndX" y2="@y" stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="round" opacity="0.4" />
+                    <line x1="@MeshStartX" y1="@y" x2="@MeshEndX" y2="@y" stroke="#d6dae2" stroke-width="@ThreadThickness" stroke-linecap="butt" />
+                    <line x1="@MeshStartX" y1="@y" x2="@MeshEndX" y2="@y" stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="butt" opacity="0.4" />
                 }
 
                 @for (var col = 0; col < VerticalCount; col++)
                 {
                     var x = X(col);
-                    <line x1="@x" y1="@MeshStartY" x2="@x" y2="@MeshEndY" stroke="#d6dae2" stroke-width="@ThreadThickness" stroke-linecap="round" />
-                    <line x1="@x" y1="@MeshStartY" x2="@x" y2="@MeshEndY" stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="round" opacity="0.4" />
+                    <line x1="@x" y1="@MeshStartY" x2="@x" y2="@MeshEndY" stroke="#d6dae2" stroke-width="@ThreadThickness" stroke-linecap="butt" />
+                    <line x1="@x" y1="@MeshStartY" x2="@x" y2="@MeshEndY" stroke="url(#threadShade)" stroke-width="@ThreadThickness" stroke-linecap="butt" opacity="0.4" />
                 }
 
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
@@ -518,36 +518,32 @@
     // in addition to the default break opportunities (spaces, hyphens). Words themselves are never split.
     private static string WrapLabel(string value) => string.IsNullOrEmpty(value) ? value : value.Replace("/", "/\u200B");
 
-    // Vertical thread from the TOP edge down: rounded cap at y0 (protruding), flat end at y1 (inside)
+    // Vertical thread from the TOP edge down: flat open end at y0 (protrusion), rounded convex cap at y1 (inner stop)
     private static string VertStartPath(double x, double y0, double y1)
     {
         var r = ThreadThickness / 2;
-        // Arc from (x-r,y0) to (x+r,y0) sweep=0 (CCW) bows upward = rounded top protrusion
-        return $"M{Fmt(x - r)},{Fmt(y0)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(x + r)},{Fmt(y0)} L{Fmt(x + r)},{Fmt(y1)} L{Fmt(x - r)},{Fmt(y1)} Z";
+        return $"M{Fmt(x - r)},{Fmt(y0)} L{Fmt(x + r)},{Fmt(y0)} L{Fmt(x + r)},{Fmt(y1)} A{Fmt(r)},{Fmt(r)} 0 0,1 {Fmt(x - r)},{Fmt(y1)} Z";
     }
 
-    // Vertical thread from the BOTTOM edge up: flat end at y1 (inside), rounded cap at yEnd (protruding)
+    // Vertical thread from the BOTTOM edge up: rounded convex cap at y1 (inner stop), flat open end at yEnd (protrusion)
     private static string VertEndPath(double x, double yEnd, double y1)
     {
         var r = ThreadThickness / 2;
-        // Arc from (x-r,yEnd) to (x+r,yEnd) sweep=1 (CW) bows downward = rounded bottom protrusion
-        return $"M{Fmt(x + r)},{Fmt(y1)} L{Fmt(x - r)},{Fmt(y1)} L{Fmt(x - r)},{Fmt(yEnd)} A{Fmt(r)},{Fmt(r)} 0 0,1 {Fmt(x + r)},{Fmt(yEnd)} Z";
+        return $"M{Fmt(x + r)},{Fmt(yEnd)} L{Fmt(x - r)},{Fmt(yEnd)} L{Fmt(x - r)},{Fmt(y1)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(x + r)},{Fmt(y1)} Z";
     }
 
-    // Horizontal thread from the LEFT edge right: rounded cap at x0 (protruding), flat end at x1 (inside)
+    // Horizontal thread from the LEFT edge right: flat open end at x0 (protrusion), rounded convex cap at x1 (inner stop)
     private static string HorizStartPath(double x0, double x1, double y)
     {
         var r = ThreadThickness / 2;
-        // Arc from (x0,y-r) to (x0,y+r) sweep=0 (CCW) bows leftward = rounded left protrusion
-        return $"M{Fmt(x0)},{Fmt(y - r)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(x0)},{Fmt(y + r)} L{Fmt(x1)},{Fmt(y + r)} L{Fmt(x1)},{Fmt(y - r)} Z";
+        return $"M{Fmt(x0)},{Fmt(y + r)} L{Fmt(x0)},{Fmt(y - r)} L{Fmt(x1)},{Fmt(y - r)} A{Fmt(r)},{Fmt(r)} 0 0,1 {Fmt(x1)},{Fmt(y + r)} Z";
     }
 
-    // Horizontal thread from the RIGHT edge left: flat end at x1 (inside), rounded cap at xEnd (protruding)
+    // Horizontal thread from the RIGHT edge left: rounded convex cap at x1 (inner stop), flat open end at xEnd (protrusion)
     private static string HorizEndPath(double xEnd, double x1, double y)
     {
         var r = ThreadThickness / 2;
-        // Arc from (xEnd,y+r) to (xEnd,y-r) sweep=0 (CCW) bows rightward = rounded right protrusion
-        return $"M{Fmt(x1)},{Fmt(y - r)} L{Fmt(x1)},{Fmt(y + r)} L{Fmt(xEnd)},{Fmt(y + r)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(xEnd)},{Fmt(y - r)} Z";
+        return $"M{Fmt(xEnd)},{Fmt(y - r)} L{Fmt(xEnd)},{Fmt(y + r)} L{Fmt(x1)},{Fmt(y + r)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(x1)},{Fmt(y - r)} Z";
     }
 
     private void ResetColors()
