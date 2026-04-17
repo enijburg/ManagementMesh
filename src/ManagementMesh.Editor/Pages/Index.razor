@@ -64,34 +64,50 @@
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var key = ColumnKey(col);
-                    var startStop = Document.VerticalStartStops.GetValueOrDefault(key, VertStartInactive);
-                    if (startStop >= ColorRowStart)
+                    if (IsTopColumn(col))
                     {
-                        var color = Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{VertStartPath(X(col), MeshStartY - LaneProtrusion, Y(startStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        // Top-label lane: thread originates at the top edge, protrudes into the top label area.
+                        var startStop = Document.VerticalStartStops.GetValueOrDefault(key, VertStartInactive);
+                        if (startStop >= ColorRowStart)
+                        {
+                            var color = Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor);
+                            @((MarkupString)$"<path d=\"{VertStartPath(X(col), MeshStartY - LaneProtrusion, Y(startStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        }
                     }
-                    var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
-                    if (endStop <= ColorRowEnd)
+                    else
                     {
-                        var color = Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{VertEndPath(X(col), MeshEndY + LaneProtrusion, Y(endStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        // Bottom-label lane: thread originates at the bottom edge, protrudes into the bottom label area.
+                        var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
+                        if (endStop <= ColorRowEnd)
+                        {
+                            var color = Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor);
+                            @((MarkupString)$"<path d=\"{VertEndPath(X(col), MeshEndY + LaneProtrusion, Y(endStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        }
                     }
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var key = RowKey(row);
-                    var startStop = Document.HorizontalStartStops.GetValueOrDefault(key, HorizStartInactive);
-                    if (startStop >= ColorColStart)
+                    if (IsLeftRow(row))
                     {
-                        var color = Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{HorizStartPath(MeshStartX - LaneProtrusion, X(startStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        // Left-label lane: thread originates at the left edge, protrudes into the left label area.
+                        var startStop = Document.HorizontalStartStops.GetValueOrDefault(key, HorizStartInactive);
+                        if (startStop >= ColorColStart)
+                        {
+                            var color = Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor);
+                            @((MarkupString)$"<path d=\"{HorizStartPath(MeshStartX - LaneProtrusion, X(startStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        }
                     }
-                    var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
-                    if (endStop <= ColorColEnd)
+                    else
                     {
-                        var color = Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{HorizEndPath(MeshEndX + LaneProtrusion, X(endStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        // Right-label lane: thread originates at the right edge, protrudes into the right label area.
+                        var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
+                        if (endStop <= ColorColEnd)
+                        {
+                            var color = Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor);
+                            @((MarkupString)$"<path d=\"{HorizEndPath(MeshEndX + LaneProtrusion, X(endStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        }
                     }
                 }
 
@@ -143,61 +159,101 @@
                 @for (var col = ColorColStart; col <= ColorColEnd; col++)
                 {
                     var c = col;
-                    <line class="drag-handle" x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="36"
-                          @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.Start)" />
-                }
-
-                @for (var col = ColorColStart; col <= ColorColEnd; col++)
-                {
-                    var c = col;
-                    <line class="drag-handle" x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="36"
-                          @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.End)" />
-                }
-
-                @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
-                {
-                    var r = row;
-                    <line class="drag-handle" x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="36"
-                          @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.Start)" />
+                    if (IsTopColumn(c))
+                    {
+                        <line class="drag-handle" x1="@X(c)" y1="@(MeshStartY - HitBand)" x2="@X(c)" y2="@MeshStartY" stroke="transparent" stroke-width="36"
+                              @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.Start)" />
+                    }
+                    else
+                    {
+                        <line class="drag-handle" x1="@X(c)" y1="@MeshEndY" x2="@X(c)" y2="@(MeshEndY + HitBand)" stroke="transparent" stroke-width="36"
+                              @onpointerdown="() => BeginDrag(ThreadAxis.Vertical, c, ThreadOrigin.End)" />
+                    }
                 }
 
                 @for (var row = ColorRowStart; row <= ColorRowEnd; row++)
                 {
                     var r = row;
-                    <line class="drag-handle" x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="36"
-                          @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.End)" />
+                    if (IsLeftRow(r))
+                    {
+                        <line class="drag-handle" x1="@(MeshStartX - HitBand)" y1="@Y(r)" x2="@MeshStartX" y2="@Y(r)" stroke="transparent" stroke-width="36"
+                              @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.Start)" />
+                    }
+                    else
+                    {
+                        <line class="drag-handle" x1="@MeshEndX" y1="@Y(r)" x2="@(MeshEndX + HitBand)" y2="@Y(r)" stroke="transparent" stroke-width="36"
+                              @onpointerdown="() => BeginDrag(ThreadAxis.Horizontal, r, ThreadOrigin.End)" />
+                    }
                 }
 
                 @for (var col = 0; col < VerticalCount; col++)
                 {
-                    var lx = (int)X(col);
-                    var topY = (int)TopLabelY;
-                    var topLabel = col < Resources.Length ? Resources[col] : string.Empty;
-                    @((MarkupString)$"<text class=\"mesh-label-text\" transform=\"translate({lx} {topY}) rotate(-90)\" text-anchor=\"start\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(topLabel)}</text>")
-                }
-
-                @for (var col = 0; col < VerticalCount; col++)
-                {
-                    var lx = (int)X(col);
-                    var botY = (int)BottomLabelY;
-                    var botLabel = col < ManagementPractices.Length ? ManagementPractices[col] : string.Empty;
-                    @((MarkupString)$"<text class=\"mesh-label-text\" transform=\"translate({lx} {botY}) rotate(-90)\" text-anchor=\"end\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(botLabel)}</text>")
+                    if (IsTopColumn(col))
+                    {
+                        var idx = TopIndex(col);
+                        if (idx < Resources.Length)
+                        {
+                            var label = Resources[idx];
+                            var boxX = X(col) - StepX;
+                            var boxW = StepX * 2;
+                            var boxH = SvgLabelSpace - LabelGap - LaneProtrusion;
+                            <foreignObject x="@Fmt(boxX)" y="0" width="@Fmt(boxW)" height="@Fmt(boxH)">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="mesh-label-wrap mesh-label-top">
+                                    <div class="mesh-label-inner">@label</div>
+                                </div>
+                            </foreignObject>
+                        }
+                    }
+                    else
+                    {
+                        var idx = BottomIndex(col);
+                        if (idx < ManagementPractices.Length)
+                        {
+                            var label = ManagementPractices[idx];
+                            var boxX = X(col) - StepX;
+                            var boxW = StepX * 2;
+                            var boxH = SvgLabelSpace - LabelGap - LaneProtrusion;
+                            var boxY = MeshEndY + LabelGap + LaneProtrusion;
+                            <foreignObject x="@Fmt(boxX)" y="@Fmt(boxY)" width="@Fmt(boxW)" height="@Fmt(boxH)">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="mesh-label-wrap mesh-label-bottom">
+                                    <div class="mesh-label-inner">@label</div>
+                                </div>
+                            </foreignObject>
+                        }
+                    }
                 }
 
                 @for (var row = 0; row < HorizontalCount; row++)
                 {
-                    var ly = (int)Y(row);
-                    var lx = (int)LeftLabelX;
-                    var leftLabel = row < Environment.Length ? Environment[row] : string.Empty;
-                    @((MarkupString)$"<text class=\"mesh-label-text\" x=\"{lx}\" y=\"{ly}\" text-anchor=\"end\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(leftLabel)}</text>")
-                }
-
-                @for (var row = 0; row < HorizontalCount; row++)
-                {
-                    var ly = (int)Y(row);
-                    var rx = (int)RightLabelX;
-                    var rightLabel = row < EmergingTechnologies.Length ? EmergingTechnologies[row] : string.Empty;
-                    @((MarkupString)$"<text class=\"mesh-label-text\" x=\"{rx}\" y=\"{ly}\" text-anchor=\"start\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(rightLabel)}</text>")
+                    if (IsLeftRow(row))
+                    {
+                        var idx = LeftIndex(row);
+                        if (idx < Environment.Length)
+                        {
+                            var label = Environment[idx];
+                            var boxY = Y(row) - StepY;
+                            var boxH = StepY * 2;
+                            var boxW = SvgHLabelSpace - LabelGap - LaneProtrusion;
+                            <foreignObject x="0" y="@Fmt(boxY)" width="@Fmt(boxW)" height="@Fmt(boxH)">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="mesh-label-wrap mesh-label-left">@label</div>
+                            </foreignObject>
+                        }
+                    }
+                    else
+                    {
+                        var idx = RightIndex(row);
+                        if (idx < EmergingTechnologies.Length)
+                        {
+                            var label = EmergingTechnologies[idx];
+                            var boxY = Y(row) - StepY;
+                            var boxH = StepY * 2;
+                            var boxW = SvgHLabelSpace - LabelGap - LaneProtrusion;
+                            var boxX = MeshEndX + LabelGap + LaneProtrusion;
+                            <foreignObject x="@Fmt(boxX)" y="@Fmt(boxY)" width="@Fmt(boxW)" height="@Fmt(boxH)">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="mesh-label-wrap mesh-label-right">@label</div>
+                            </foreignObject>
+                        }
+                    }
                 }
             </svg>
         </div>
@@ -236,8 +292,23 @@
 
     private static int SvgTotalHeight => SvgSize + 2 * SvgLabelSpace;
     private static int SvgTotalWidth => SvgSize + 2 * SvgHLabelSpace;
-    private static int VerticalCount => Math.Max(Resources.Length, ManagementPractices.Length);
-    private static int HorizontalCount => Math.Max(Environment.Length, EmergingTechnologies.Length);
+
+    // Each label owns its own lane. Top- and bottom-label lanes alternate across the columns;
+    // left- and right-label lanes alternate across the rows. Even indices are top/left lanes,
+    // odd indices are bottom/right lanes.
+    private static int TopCount => Resources.Length;
+    private static int BottomCount => ManagementPractices.Length;
+    private static int LeftCount => Environment.Length;
+    private static int RightCount => EmergingTechnologies.Length;
+    private static int VerticalCount => TopCount + BottomCount;
+    private static int HorizontalCount => LeftCount + RightCount;
+
+    private static bool IsTopColumn(int col) => col % 2 == 0;
+    private static bool IsLeftRow(int row) => row % 2 == 0;
+    private static int TopIndex(int col) => col / 2;
+    private static int BottomIndex(int col) => col / 2;
+    private static int LeftIndex(int row) => row / 2;
+    private static int RightIndex(int row) => row / 2;
 
     private static int ColorColStart => 0;
     private static int ColorColEnd => VerticalCount - 1;
@@ -284,19 +355,35 @@
         for (var col = 0; col < VerticalCount; col++)
         {
             var key = ColumnKey(col);
-            doc.VerticalStartColors[key] = DefaultColor;
-            doc.VerticalStartStops[key]  = ColorRowStart;   // stub visible at top boundary by default
-            doc.VerticalEndColors[key]   = DefaultColor;
-            doc.VerticalEndStops[key]    = ColorRowEnd;     // stub visible at bottom boundary by default
+            if (IsTopColumn(col))
+            {
+                // Top-label lane: only a Start (top-origin) thread exists.
+                doc.VerticalStartColors[key] = DefaultColor;
+                doc.VerticalStartStops[key]  = ColorRowStart;
+            }
+            else
+            {
+                // Bottom-label lane: only an End (bottom-origin) thread exists.
+                doc.VerticalEndColors[key] = DefaultColor;
+                doc.VerticalEndStops[key]  = ColorRowEnd;
+            }
         }
 
         for (var row = 0; row < HorizontalCount; row++)
         {
             var key = RowKey(row);
-            doc.HorizontalStartColors[key] = DefaultColor;
-            doc.HorizontalStartStops[key]  = ColorColStart; // stub visible at left boundary by default
-            doc.HorizontalEndColors[key]   = DefaultColor;
-            doc.HorizontalEndStops[key]    = ColorColEnd;   // stub visible at right boundary by default
+            if (IsLeftRow(row))
+            {
+                // Left-label lane: only a Start (left-origin) thread exists.
+                doc.HorizontalStartColors[key] = DefaultColor;
+                doc.HorizontalStartStops[key]  = ColorColStart;
+            }
+            else
+            {
+                // Right-label lane: only an End (right-origin) thread exists.
+                doc.HorizontalEndColors[key] = DefaultColor;
+                doc.HorizontalEndStops[key]  = ColorColEnd;
+            }
         }
 
         return doc;
@@ -472,14 +559,21 @@
     {
         Document = SeedDocument();
 
-        Document.VerticalStartColors[ColumnKey(2)] = "#e35a5a";
-        Document.VerticalStartStops[ColumnKey(2)]  = 5;
+        // Resources[0] = "People" lives on the even column 0 (top lane).
+        Document.VerticalStartColors[ColumnKey(0)] = "#e35a5a";
+        Document.VerticalStartStops[ColumnKey(0)]  = 5;
 
-        Document.VerticalStartColors[ColumnKey(3)] = "#e35a5a";
-        Document.VerticalStartStops[ColumnKey(3)]  = 3;
+        // Resources[2] = "Budget" lives on the even column 4 (top lane).
+        Document.VerticalStartColors[ColumnKey(4)] = "#e35a5a";
+        Document.VerticalStartStops[ColumnKey(4)]  = 3;
 
-        Document.HorizontalEndColors[RowKey(1)] = "#e35a5a";
-        Document.HorizontalEndStops[RowKey(1)]  = 4;
+        // ManagementPractices[1] = "ISO/IEC..." lives on the odd column 3 (bottom lane).
+        Document.VerticalEndColors[ColumnKey(3)] = "#f59e0b";
+        Document.VerticalEndStops[ColumnKey(3)]  = 4;
+
+        // EmergingTechnologies[1] = "AI" lives on the odd row 3 (right lane).
+        Document.HorizontalEndColors[RowKey(3)] = "#3b82f6";
+        Document.HorizontalEndStops[RowKey(3)]  = 4;
 
         ExportJson();
     }
