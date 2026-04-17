@@ -67,14 +67,14 @@
                     var startStop = Document.VerticalStartStops.GetValueOrDefault(key, VertStartInactive);
                     if (startStop >= ColorRowStart)
                     {
-                        <line x1="@X(col)" y1="@MeshStartY" x2="@X(col)" y2="@Y(startStop)"
-                              stroke="@Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
+                        var color = Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor);
+                        @((MarkupString)$"<path d=\"{VertStartPath(X(col), MeshStartY, Y(startStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                     var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
                     if (endStop <= ColorRowEnd)
                     {
-                        <line x1="@X(col)" y1="@Y(endStop)" x2="@X(col)" y2="@MeshEndY"
-                              stroke="@Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
+                        var color = Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor);
+                        @((MarkupString)$"<path d=\"{VertEndPath(X(col), MeshEndY, Y(endStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                 }
 
@@ -84,14 +84,14 @@
                     var startStop = Document.HorizontalStartStops.GetValueOrDefault(key, HorizStartInactive);
                     if (startStop >= ColorColStart)
                     {
-                        <line x1="@MeshStartX" y1="@Y(row)" x2="@X(startStop)" y2="@Y(row)"
-                              stroke="@Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
+                        var color = Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor);
+                        @((MarkupString)$"<path d=\"{HorizStartPath(MeshStartX, X(startStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                     var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
                     if (endStop <= ColorColEnd)
                     {
-                        <line x1="@X(endStop)" y1="@Y(row)" x2="@MeshEndX" y2="@Y(row)"
-                              stroke="@Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor)" stroke-width="@ThreadThickness" stroke-linecap="round" stroke-opacity="@ThreadOpacity" />
+                        var color = Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor);
+                        @((MarkupString)$"<path d=\"{HorizEndPath(MeshEndX, X(endStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                 }
 
@@ -215,10 +215,10 @@
 </section>
 
 @code {
-    private static readonly string[] Resources = ["People", "Budget", "Assets", "Time", "Knowledge", "Others"];
-    private static readonly string[] ManagementPractices = ["ITIL* COBIT*5 CMMI-SVC* IT4IT", "ISO/IEC 20000 ISO/IEC 27000", "DevOps Agile Lean", "Project & Portfolio Management", "SIAM", "Others"];
-    private static readonly string[] Environment = ["Others", "Organizational Culture", "Competition", "Legislation", "Service Stabilizers (processes, metrics, tools)", "Others"];
-    private static readonly string[] EmergingTechnologies = ["Containers", "IoT", "Big Data", "Cloud", "Automation", "Others"];
+    private static readonly string[] Resources = ["People", "Supplier", "Budget", "Assets", "Time", "Knowledge", "Others"];
+    private static readonly string[] ManagementPractices = ["ITIL/COBIT/CMMI-SVC", "ISO/IEC 20000/27000/38500", "DevOps/Agile/Lean", "Project & Portfolio Management", "SIAM", "Security Practices", "Others"];
+    private static readonly string[] Environment = ["Others", "Organizational Culture", "Competition", "Legislation", "Partners", "Service Stabilizers", "Risk Controls", "Operating Model", "Governance", "Compliance"];
+    private static readonly string[] EmergingTechnologies = ["Containers", "AI", "IoT", "BYOD", "Big Data", "Serverless Computing", "Cloud", "Automation", "Virtualization", "Others"];
 
     private static readonly string[] PresetColors = ["#e35a5a", "#4ade80", "#3b82f6", "#f59e0b", "#a855f7", "#14b8a6", "#ec4899", "#ef4444"];
 
@@ -418,6 +418,37 @@
     }
 
     private static double Clamp(double value, double min, double max) => value < min ? min : value > max ? max : value;
+
+    // Formats a double with invariant culture for use in SVG path data
+    private static string Fmt(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // Vertical thread from the TOP edge down: flat open end at y0, rounded closed cap at y1
+    private static string VertStartPath(double x, double y0, double y1)
+    {
+        var r = ThreadThickness / 2;
+        return $"M{Fmt(x - r)},{Fmt(y0)} L{Fmt(x + r)},{Fmt(y0)} L{Fmt(x + r)},{Fmt(y1)} A{Fmt(r)},{Fmt(r)} 0 0,1 {Fmt(x - r)},{Fmt(y1)} Z";
+    }
+
+    // Vertical thread from the BOTTOM edge up: rounded closed cap at y1, flat open end at yEnd
+    private static string VertEndPath(double x, double yEnd, double y1)
+    {
+        var r = ThreadThickness / 2;
+        return $"M{Fmt(x + r)},{Fmt(yEnd)} L{Fmt(x - r)},{Fmt(yEnd)} L{Fmt(x - r)},{Fmt(y1)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(x + r)},{Fmt(y1)} Z";
+    }
+
+    // Horizontal thread from the LEFT edge right: flat open end at x0, rounded closed cap at x1
+    private static string HorizStartPath(double x0, double x1, double y)
+    {
+        var r = ThreadThickness / 2;
+        return $"M{Fmt(x0)},{Fmt(y + r)} L{Fmt(x0)},{Fmt(y - r)} L{Fmt(x1)},{Fmt(y - r)} A{Fmt(r)},{Fmt(r)} 0 0,1 {Fmt(x1)},{Fmt(y + r)} Z";
+    }
+
+    // Horizontal thread from the RIGHT edge left: rounded closed cap at x1, flat open end at xEnd
+    private static string HorizEndPath(double xEnd, double x1, double y)
+    {
+        var r = ThreadThickness / 2;
+        return $"M{Fmt(xEnd)},{Fmt(y - r)} L{Fmt(xEnd)},{Fmt(y + r)} L{Fmt(x1)},{Fmt(y + r)} A{Fmt(r)},{Fmt(r)} 0 0,0 {Fmt(x1)},{Fmt(y - r)} Z";
+    }
 
     private void ResetColors()
     {
