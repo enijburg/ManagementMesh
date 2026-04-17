@@ -193,10 +193,12 @@
                         var idx = TopIndex(col);
                         if (idx < Resources.Length)
                         {
-                            var label = Resources[idx];
+                            var label = WrapLabel(Resources[idx]);
                             var boxX = X(col) - StepX;
                             var boxW = StepX * 2;
-                            var boxH = SvgLabelSpace - LabelGap - LaneProtrusion;
+                            // Extend height so the bottom of the box sits LabelGap above the thread protrusion,
+                            // matching the bottom/right label margins.
+                            var boxH = SvgLabelSpace + Padding - LabelGap - LaneProtrusion;
                             <foreignObject x="@Fmt(boxX)" y="0" width="@Fmt(boxW)" height="@Fmt(boxH)">
                                 <div xmlns="http://www.w3.org/1999/xhtml" class="mesh-label-wrap mesh-label-top">
                                     <div class="mesh-label-inner">@label</div>
@@ -209,7 +211,7 @@
                         var idx = BottomIndex(col);
                         if (idx < ManagementPractices.Length)
                         {
-                            var label = ManagementPractices[idx];
+                            var label = WrapLabel(ManagementPractices[idx]);
                             var boxX = X(col) - StepX;
                             var boxW = StepX * 2;
                             var boxH = SvgLabelSpace - LabelGap - LaneProtrusion;
@@ -230,10 +232,12 @@
                         var idx = LeftIndex(row);
                         if (idx < Environment.Length)
                         {
-                            var label = Environment[idx];
+                            var label = WrapLabel(Environment[idx]);
                             var boxY = Y(row) - StepY;
                             var boxH = StepY * 2;
-                            var boxW = SvgHLabelSpace - LabelGap - LaneProtrusion;
+                            // Extend width so the right edge of the box sits LabelGap before the thread protrusion,
+                            // matching the bottom/right label margins.
+                            var boxW = SvgHLabelSpace + Padding - LabelGap - LaneProtrusion;
                             <foreignObject x="0" y="@Fmt(boxY)" width="@Fmt(boxW)" height="@Fmt(boxH)">
                                 <div xmlns="http://www.w3.org/1999/xhtml" class="mesh-label-wrap mesh-label-left">@label</div>
                             </foreignObject>
@@ -244,7 +248,7 @@
                         var idx = RightIndex(row);
                         if (idx < EmergingTechnologies.Length)
                         {
-                            var label = EmergingTechnologies[idx];
+                            var label = WrapLabel(EmergingTechnologies[idx]);
                             var boxY = Y(row) - StepY;
                             var boxH = StepY * 2;
                             var boxW = SvgHLabelSpace - LabelGap - LaneProtrusion;
@@ -509,6 +513,10 @@
 
     // Formats a double with invariant culture for use in SVG path data
     private static string Fmt(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // Inserts a zero-width space after each slash so the browser can break long labels at "/" boundaries
+    // in addition to the default break opportunities (spaces, hyphens). Words themselves are never split.
+    private static string WrapLabel(string value) => string.IsNullOrEmpty(value) ? value : value.Replace("/", "/\u200B");
 
     // Vertical thread from the TOP edge down: flat open end at y0, rounded closed cap at y1
     private static string VertStartPath(double x, double y0, double y1)
