@@ -86,13 +86,13 @@ textarea {
 
 .mesh-layout {
   display: grid;
-  grid-template-columns: auto 180px 1fr 190px auto;
-  grid-template-rows: auto 640px auto;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto auto;
   grid-template-areas:
-    ". . top-title . ."
-    "left-title left-labels mesh right-labels right-title"
-    ". . bottom-title . .";
-  gap: .4rem .75rem;
+    ". top-title ."
+    "left-title mesh right-title"
+    ". bottom-title .";
+  gap: 0 .25rem;
   align-items: center;
 }
 
@@ -111,20 +111,13 @@ textarea {
   text-align: center;
 }
 
-.left-labels,
-.right-labels {
-  height: 640px;
-  display: grid;
-  align-items: center;
-  align-self: stretch;
-}
-
-.left-labels { grid-area: left-labels; text-align: right; }
-.right-labels { grid-area: right-labels; text-align: left; }
-
-.mesh-label {
-  font-size: .82rem;
+.mesh-label-text {
+  font-size: 11px;
   font-weight: 600;
+  fill: #374151;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  user-select: none;
+  pointer-events: none;
 }
 
 .mesh-canvas {
@@ -134,13 +127,40 @@ textarea {
   padding: .35rem;
   border: 1px solid #d6dae2;
   align-self: stretch;
+  overflow: visible;
 }
 
 .mesh-svg {
   width: 100%;
-  max-width: 720px;
-  height: 100%;
+  max-width: 920px;
   display: block;
   margin: 0 auto;
   touch-action: none;
+  overflow: visible;
+}
+
+.color-swatches {
+  display: flex;
+  gap: .25rem;
+  align-items: center;
+}
+
+.swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 1.5rem;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.swatch:hover {
+  transform: scale(1.2);
+  border-color: #64748b;
+}
+
+.drag-handle {
+  cursor: grab;
 }
