@@ -68,13 +68,13 @@
                     if (startStop >= ColorRowStart)
                     {
                         var color = Document.VerticalStartColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{VertStartPath(X(col), MeshStartY, Y(startStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        @((MarkupString)$"<path d=\"{VertStartPath(X(col), MeshStartY - LaneProtrusion, Y(startStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                     var endStop = Document.VerticalEndStops.GetValueOrDefault(key, VertEndInactive);
                     if (endStop <= ColorRowEnd)
                     {
                         var color = Document.VerticalEndColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{VertEndPath(X(col), MeshEndY, Y(endStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        @((MarkupString)$"<path d=\"{VertEndPath(X(col), MeshEndY + LaneProtrusion, Y(endStop))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                 }
 
@@ -85,13 +85,13 @@
                     if (startStop >= ColorColStart)
                     {
                         var color = Document.HorizontalStartColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{HorizStartPath(MeshStartX, X(startStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        @((MarkupString)$"<path d=\"{HorizStartPath(MeshStartX - LaneProtrusion, X(startStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                     var endStop = Document.HorizontalEndStops.GetValueOrDefault(key, HorizEndInactive);
                     if (endStop <= ColorColEnd)
                     {
                         var color = Document.HorizontalEndColors.GetValueOrDefault(key, DefaultColor);
-                        @((MarkupString)$"<path d=\"{HorizEndPath(MeshEndX, X(endStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
+                        @((MarkupString)$"<path d=\"{HorizEndPath(MeshEndX + LaneProtrusion, X(endStop), Y(row))}\" fill=\"{color}\" fill-opacity=\"{Fmt(ThreadOpacity)}\" />")
                     }
                 }
 
@@ -231,6 +231,7 @@
     private const double WeavePatch = 18;
     private const double HitBand = 36;  // Larger hit area for easier drag initiation (doubled from 18)
     private const double ThreadOpacity = 0.75;
+    private const double LaneProtrusion = 20.0;   // how far each lane extends past the grid edge into the label area
     private const string DefaultColor = "#d6dae2";
 
     private static int SvgTotalHeight => SvgSize + 2 * SvgLabelSpace;
@@ -284,18 +285,18 @@
         {
             var key = ColumnKey(col);
             doc.VerticalStartColors[key] = DefaultColor;
-            doc.VerticalStartStops[key]  = VertStartInactive;
+            doc.VerticalStartStops[key]  = ColorRowStart;   // stub visible at top boundary by default
             doc.VerticalEndColors[key]   = DefaultColor;
-            doc.VerticalEndStops[key]    = VertEndInactive;
+            doc.VerticalEndStops[key]    = ColorRowEnd;     // stub visible at bottom boundary by default
         }
 
         for (var row = 0; row < HorizontalCount; row++)
         {
             var key = RowKey(row);
             doc.HorizontalStartColors[key] = DefaultColor;
-            doc.HorizontalStartStops[key]  = HorizStartInactive;
+            doc.HorizontalStartStops[key]  = ColorColStart; // stub visible at left boundary by default
             doc.HorizontalEndColors[key]   = DefaultColor;
-            doc.HorizontalEndStops[key]    = HorizEndInactive;
+            doc.HorizontalEndStops[key]    = ColorColEnd;   // stub visible at right boundary by default
         }
 
         return doc;
